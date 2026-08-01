@@ -94,17 +94,17 @@ describe('Game FSM', () => {
     // All three guess at t=0 (full time remaining), in order.
     const r = guessers.map((id) => h.game.submitGuess(h.players.get(id)!, word));
 
-    // base 300/260/220 + full time bonus 100 = 400/360/320
-    expect(r[0].points).toBe(400);
-    expect(r[1].points).toBe(360);
-    expect(r[2].points).toBe(320);
+    // timeScore 200 (full time) × rankMult 1.0 / 0.9 / 0.8 = 200 / 180 / 160
+    expect(r[0].points).toBe(200);
+    expect(r[1].points).toBe(180);
+    expect(r[2].points).toBe(160);
     expect(r[0].points! > r[1].points! && r[1].points! > r[2].points!).toBe(true);
 
     // all guessed -> round ended exactly once
     expect(h.events.roundEnds).toHaveLength(1);
     const drawerRow = h.events.roundEnds[0].scores.find((x) => x.playerId === drawerId)!;
-    // round((400+360+320)/3 * 0.7) = round(360*0.7) = 252
-    expect(drawerRow.roundPoints).toBe(252);
+    // round((200+180+160)/3 * 0.5) = round(180 * 0.5) = 90
+    expect(drawerRow.roundPoints).toBe(90);
     expect(drawerRow.roundPoints).toBeLessThan(r[0].points!);
   });
 
@@ -113,8 +113,8 @@ describe('Game FSM', () => {
     const { word, guessers } = startDrawing(h);
     vi.setSystemTime(40_000); // half the draw time gone
     const res = h.game.submitGuess(h.players.get(guessers[0])!, word);
-    // rank-1 base 300 + round(0.5 * 100) = 350
-    expect(res.points).toBe(350);
+    // timeScore = 20 + 0.5 × 180 = 110, rank-1 mult 1.0 => 110
+    expect(res.points).toBe(110);
   });
 
   it('ends the round early once everyone has guessed', () => {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { socket } from '../socket';
+import { sfxCorrect, sfxGameOver, sfxRoundStart } from '../audio';
 import type { GameStateView, PlayerView, RoomSettings, ScoreDelta } from '../types/events';
 
 export interface ChatEntry {
@@ -94,6 +95,7 @@ export function useGame(): GameApi {
 
     const onRoundStart = ({ drawerName }: { drawerName: string }) => {
       pushMsg({ kind: 'system', text: `${drawerName} is choosing a word...` });
+      sfxRoundStart();
     };
 
     const onRoundEnd = (d: RoundEndInfo & { drawerId: string }) => {
@@ -103,6 +105,7 @@ export function useGame(): GameApi {
 
     const onGameOver = (d: { winner: PlayerView | null; leaderboard: PlayerView[] }) => {
       setGameOver(d);
+      sfxGameOver();
     };
 
     const onGuessResult = (d: {
@@ -112,6 +115,7 @@ export function useGame(): GameApi {
     }) => {
       if (d.correct) {
         pushMsg({ kind: 'correct', text: `${d.playerName} guessed the word! (+${d.points})` });
+        sfxCorrect();
       }
     };
 

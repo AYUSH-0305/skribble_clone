@@ -232,9 +232,11 @@ input:focus { border-color: var(--tomato); box-shadow: var(--shadow-sm); }
 .player-list li.drawing { background: var(--sun); }
 .player-list li.guessed { background: #d6f0d3; }
 .player-list li.offline { opacity: 0.5; }
-.rank { color: var(--ink-soft); font-size: 12px; width: 22px; font-family: var(--font-display); }
-.pname { flex: 1; display: flex; align-items: center; gap: 6px; }
-.score { font-family: var(--font-display); font-weight: 700; color: var(--ink); }
+.rank { color: var(--ink-soft); font-size: 12px; width: 22px; font-family: var(--font-display); flex: none; }
+.pname { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.pname-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.leader-crown { color: #e6a700; flex: none; }
+.score { font-family: var(--font-display); font-weight: 700; color: var(--ink); flex: none; }
 .badge { font-size: 10px; padding: 2px 6px; border-radius: 6px; border: 1.5px solid var(--ink); font-weight: 800; display: inline-flex; align-items: center; gap: 3px; }
 .badge.host { background: var(--tomato); color: #fff; }
 .badge.ok { background: var(--grass); color: #fff; }
@@ -247,6 +249,7 @@ input:focus { border-color: var(--tomato); box-shadow: var(--shadow-sm); }
   padding: 10px 18px; background: var(--paper-2); border-bottom: 3px solid var(--ink);
 }
 .leave-btn { padding: 7px 13px; }
+.icon-btn { padding: 7px; }
 .round { color: var(--ink-soft); font-weight: 800; }
 .round strong { color: var(--ink); font-family: var(--font-display); }
 .timer {

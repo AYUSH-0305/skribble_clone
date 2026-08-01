@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LogOut, Timer as TimerIcon, Trophy, Crown, Medal } from 'lucide-react';
+import { LogOut, Timer as TimerIcon, Trophy, Crown, Medal, Volume2, VolumeX } from 'lucide-react';
 import { socket } from '../socket';
+import { startMusic, stopMusic, sfxTick, isMuted, setMuted } from '../audio';
 import type { DrawTool, PlayerView } from '../types/events';
 import type { GameApi } from '../hooks/useGame';
 import { CanvasBoard } from './CanvasBoard';
@@ -19,7 +20,20 @@ export function GameScreen({ api }: Props) {
   const [size, setSize] = useState(0.015);
   const [tool, setTool] = useState<DrawTool>('pen');
 
+  const [muted, setMutedState] = useState(isMuted());
   const secondsLeft = useCountdown(state?.roundEndsAt ?? null);
+  const phase = state?.phase;
+
+  // Background music plays while the game screen is mounted.
+  useEffect(() => {
+    startMusic();
+    return () => stopMusic();
+  }, []);
+
+  // Tick in the final seconds of a drawing turn.
+  useEffect(() => {
+    if (phase === 'drawing' && secondsLeft > 0 && secondsLeft <= 5) sfxTick();
+  }, [secondsLeft, phase]);
 
   if (!state) return null;
   const isDrawer = state.drawerId === you?.id;
@@ -28,6 +42,11 @@ export function GameScreen({ api }: Props) {
   const isGuessing = state.phase === 'drawing' && !isDrawer && !youGuessed;
 
   const onSend = (text: string) => (isGuessing ? api.sendGuess(text) : api.sendChat(text));
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    setMutedState(next);
+  };
 
   return (
     <div className="game">
@@ -50,6 +69,14 @@ export function GameScreen({ api }: Props) {
           )}
           {state.wordLength ? <span className="len">{state.wordLength}</span> : null}
         </div>
+        <button
+          className="ghost icon-btn"
+          onClick={toggleMute}
+          title={muted ? 'Unmute' : 'Mute'}
+          aria-label={muted ? 'Unmute' : 'Mute'}
+        >
+          {muted ? <VolumeX size={18} strokeWidth={2.5} /> : <Volume2 size={18} strokeWidth={2.5} />}
+        </button>
       </header>
 
       <div className="game-body">

@@ -9,18 +9,23 @@ import { Player } from './Player.js';
 import { WordBank } from './WordBank.js';
 
 // ---------------------------------------------------------------------------
-// Scoring — modelled on skribbl.io. A guesser's score has TWO parts:
-//   1. a rank component: earlier guessers score more (1st > 2nd > 3rd ...)
-//   2. a time component: the more time is left when you guess, the bigger the bonus
-// The drawer earns a share of the guessers' points, scaled by how many of the
-// eligible players actually guessed — so a clear drawing that many people guess
-// quickly is rewarded. If nobody guesses, nobody scores (drawer included).
+// Scoring — modelled on skribbl.io, kept on a deliberately moderate, bounded
+// scale so totals don't balloon.
+//
+//   A guesser's score is driven mainly by TIME remaining, modified by RANK:
+//     timeScore = GUESS_MIN + timeFraction × (GUESS_MAX − GUESS_MIN)   // 20..200
+//     rankMult  = max(RANK_FLOOR, 1 − (rank−1) × RANK_FALLOFF)         // 1.0, 0.9, ...
+//     score     = round(timeScore × rankMult)                          // floored at GUESS_MIN
+//
+//   The drawer earns a share of the participation-weighted average guesser
+//   score, so a clear drawing many people guess quickly is rewarded — but the
+//   drawer never out-earns the fastest guesser. Nobody guesses => nobody scores.
 // ---------------------------------------------------------------------------
-const GUESS_BASE_FIRST = 300; // base points for the 1st correct guesser
-const GUESS_RANK_STEP = 40; // each later guesser's base drops by this
-const GUESS_BASE_MIN = 100; // floor for the base regardless of rank
-const GUESS_TIME_BONUS = 100; // max extra, scaled by fraction of time remaining
-const DRAWER_SHARE = 0.7; // drawer's cut of the average guesser score
+const GUESS_MAX = 200; // score for an instant first guess (upper bound)
+const GUESS_MIN = 20; // floor for guessing correctly at all
+const RANK_FALLOFF = 0.1; // each later guesser keeps 10% less of their time score
+const RANK_FLOOR = 0.5; // ...but never less than half
+const DRAWER_SHARE = 0.5; // drawer's cut of the average guesser score
 
 const CHOOSE_TIME_MS = 15_000; // drawer auto-pick fallback
 const ROUND_END_PAUSE_MS = 5_000; // reveal word before next turn
@@ -216,15 +221,15 @@ export class Game {
   }
 
   /**
-   * A correct guesser's score = rank base (earlier = more) + time bonus (more
-   * time left = more). `rank` is 1 for the first correct guesser, 2 for the
-   * next, and so on.
+   * A correct guesser's score: time-driven, reduced a little per rank.
+   * `rank` is 1 for the first correct guesser, 2 for the next, and so on.
    */
   private computeGuessScore(rank: number): number {
-    const base = Math.max(GUESS_BASE_MIN, GUESS_BASE_FIRST - (rank - 1) * GUESS_RANK_STEP);
     const timeLeftMs = this.roundEndsAt == null ? 0 : Math.max(0, this.roundEndsAt - Date.now());
     const timeFrac = Math.min(1, timeLeftMs / (this.settings.drawTime * 1000));
-    return base + Math.round(timeFrac * GUESS_TIME_BONUS);
+    const timeScore = GUESS_MIN + timeFrac * (GUESS_MAX - GUESS_MIN);
+    const rankMult = Math.max(RANK_FLOOR, 1 - (rank - 1) * RANK_FALLOFF);
+    return Math.max(GUESS_MIN, Math.round(timeScore * rankMult));
   }
 
   private allGuessed(): boolean {
@@ -244,10 +249,10 @@ export class Game {
     const word = this.currentWord ?? '';
     const drawer = this.drawerId ? this.players.get(this.drawerId) : null;
 
-    // Drawer earns a share of the guessers' points, scaled by participation:
+    // Drawer earns a share of the participation-weighted average guesser score:
     //   (sum of correct guessers' points / eligible guessers) * DRAWER_SHARE.
-    // More people guessing (and faster) => bigger drawer reward. Nobody guessed
-    // => drawer scores nothing, matching skribbl.
+    // More people guessing (and faster) => bigger drawer reward, but always
+    // below the fastest guesser. Nobody guessed => drawer scores nothing.
     const guessers = this.connectedPlayers.filter((p) => p.id !== this.drawerId);
     const correct = guessers.filter((p) => p.hasGuessedThisRound);
     if (drawer && guessers.length > 0 && correct.length > 0) {

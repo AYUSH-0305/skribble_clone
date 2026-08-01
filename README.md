@@ -147,10 +147,11 @@ Manual setup (equivalent):
   are never echoed as chat text.
 - **Word matching** — guesses are normalized (trim + lowercase + collapse whitespace);
   an edit-distance-1 near miss is privately flagged as "close".
-- **Scoring** (skribbl.io-style) — a guesser's points combine **rank** (the 1st
-  correct guesser scores more than the 2nd, etc.) and **time remaining**, so
-  `points = base(rank) + timeBonus`. The drawer earns a share of the guessers'
-  points scaled by how many of the eligible players guessed
-  (`round(Σ points / eligibleGuessers × 0.7)`) — always below the top guesser,
-  and zero if nobody guesses. Example: 1st ≈ 399, 2nd ≈ 359, 3rd ≈ 319 →
-  drawer 251.
+- **Scoring** (skribbl.io-style, bounded scale) — a guesser's score is driven by
+  **time remaining** and modified by **guess rank**:
+  `timeScore = 20 + timeFraction × 180` (so 20–200), then `× rankMult`
+  (1.0, 0.9, 0.8 … floored at 0.5). Max for a perfect first guess is **200**.
+  The drawer earns `round(Σ guessers' points / eligibleGuessers × 0.5)` — scales
+  with how many guessed and how fast, always below the fastest guesser, and zero
+  if nobody guesses. Example (all guess instantly): 1st 200, 2nd 180, 3rd 160 →
+  drawer 90.
