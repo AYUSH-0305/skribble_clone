@@ -1,28 +1,50 @@
 # Skribbl Clone
 
-A real-time multiplayer drawing-and-guessing game (a [skribbl.io](https://skribbl.io)
-clone). Players join a room, take turns drawing a secret word on a shared canvas, and
-race to guess it in chat. Correct guesses score points (faster = more), turns rotate,
-and the highest score at the end wins. Everything is synchronized over WebSockets.
+A real-time multiplayer drawing-and-guessing game — an end-to-end clone of
+[skribbl.io](https://skribbl.io). Players join a room, take turns drawing a secret
+word on a shared canvas, and race to guess it in chat. Faster guesses score more,
+turns rotate so everyone draws, and the highest score at the end wins. Every stroke,
+guess, and score is synchronized in real time over WebSockets.
 
-**Live demo:** _<!-- TODO: paste your Render/Railway URL here after deploying, e.g. https://skribbl-clone.onrender.com -->_
+### ▶ Live demo: **https://skribbl-clone-z4ot.onrender.com**
+
+> Hosted on Render's free tier, which sleeps after inactivity — the **first** load
+> may take ~30–50s to wake the server, then it's instant. Open the link in two
+> browser windows (or share the invite link) to play a full game.
 
 ---
 
 ## Features
 
-**Core**
-- Public/private rooms with a 4-character join code and invite link
-- Lobby with player list, host controls, host-configurable settings
-- Turn-based rounds: one drawer, everyone else guesses
-- Real-time drawing sync (normalized coordinates → identical on every screen size)
-- Word selection: drawer picks 1 of N words; guessers see a blank mask
-- Guessing with time-decay scoring, live leaderboard, winner at game end
-- Drawing tools: brush, 16 colors, 4 sizes, eraser, undo, clear canvas
+**Gameplay**
+- Public/private rooms with a 4-character join code and shareable invite link
+- Lobby with player list, host controls, and host-configurable settings
+- Turn-based rounds: one drawer picks 1 of N words; everyone else guesses
+- Guessing with **skribbl-style scoring** (guess order + speed), a live leaderboard
+  that crowns the current leader, and a winner at game end
 - Progressive letter hints revealed over time
-- Chat + guessing with anti-spoiler rules (correct guesses and drawer chat never
-  leak the word to players still guessing)
-- Server-authoritative round timer and mid-game canvas replay for late joiners
+
+**Drawing**
+- Real-time canvas sync using **normalized coordinates** — the drawing looks
+  identical on every screen size
+- Tools: brush, 16 colors, 4 brush sizes, eraser, undo, clear canvas
+- Mid-game **canvas replay** so late joiners and reconnecting players see the
+  drawing so far
+
+**Social & moderation**
+- Chat with anti-spoiler rules (correct guesses and drawer chat never leak the word
+  to players still guessing)
+- 👍 / 👎 **reactions** on the current drawing
+- **Vote-kick** with a strict majority; kicked players are banned from the room
+  (the host is immune)
+- Host leaving closes the room and returns everyone to the home screen
+
+**Reliability & polish**
+- Server-authoritative game state, timer, and scoring (cheat-resistant)
+- **Reconnection** — a stable session token plus a grace window lets a backgrounded
+  phone or a page reload rejoin the same room with score and turn intact
+- Procedural background music + sound effects (Web Audio, mutable)
+- Responsive layout for phones, tablets, and desktop
 
 **Configurable per room:** rounds (2–10), draw time (15–240s), max players (2–20),
 word choices (1–5), hints (0–5).
@@ -32,126 +54,116 @@ word choices (1–5), hints (0–5).
 | Layer | Choice |
 |---|---|
 | Frontend | React + TypeScript + Vite, HTML5 Canvas (custom drawing logic) |
+| Icons / audio | lucide-react · Web Audio API (synthesised, no assets) |
 | Backend | Node.js + Express |
 | Realtime | Socket.IO |
-| State | In-memory (rooms are ephemeral; no DB needed for MVP) |
-| Words | JSON word list, categorized |
+| State | In-memory (rooms are ephemeral; no database needed) |
+| Words | Categorized JSON word list |
+| Tests | Vitest (unit + integration) |
+
+## Quick start
+
+Requires Node.js 20+.
+
+```bash
+npm run install:all      # install server + client deps
+
+npm run dev:server       # terminal 1 → backend on http://localhost:3001
+npm run dev:client       # terminal 2 → frontend on http://localhost:5173
+```
+
+Open http://localhost:5173, then open a second window (or an incognito window) and
+join with the room code / invite link to play. In dev, Vite proxies `/socket.io` to
+the backend on port 3001. To play from a phone on the same network, start the client
+with `npm --prefix client run dev -- --host` and open the printed Network URL.
+
+## Testing
+
+The backend logic and real-time layer are covered by an automated suite (Vitest):
+
+```bash
+npm test                              # run the full suite (26 tests)
+npm --prefix server run test:watch    # watch mode
+```
+
+- **Unit tests** drive the `Game` state machine directly with fake timers — scoring
+  (rank + time), drawer share, round rotation, game-over, early end, timeout, hints,
+  word matching, reactions, and the drawer-leaves case. `Game` is pure logic with no
+  socket dependency, which makes this fast and deterministic.
+- **Integration tests** spin up a real Socket.IO server + clients and exercise
+  create/join/start/guess scoring, host-leaves-closes-room, vote-kick + ban,
+  host immunity, and **reconnection** (a stale disconnect never marks a live player
+  offline; a genuine drop shows "reconnecting" and then restores).
+
+## Production build
+
+The server serves the built client from the **same origin**, so there's no CORS or
+cross-service WebSocket configuration.
+
+```bash
+npm run build     # client → client/dist, server → server/dist
+npm start         # serves the app + WebSockets on http://localhost:3001
+```
+
+## Deployment
+
+WebSockets need a persistent server, so deploy to **Render** or **Railway** — not
+Vercel/Netlify, whose serverless functions can't hold a WebSocket open. This repo is
+deployed on Render via the included `render.yaml` blueprint:
+
+1. Push the repo to GitHub.
+2. In Render: **New → Blueprint** and select the repo. The blueprint provisions one
+   web service that builds the client and serves it alongside the Socket.IO server.
+3. Deploy. Render sets `PORT` automatically; the server reads it.
+
+Equivalent manual settings:
+- **Build:** `npm --prefix client install --include=dev && npm --prefix client run build && npm --prefix server install --include=dev && npm --prefix server run build`
+- **Start:** `npm --prefix server start`
+
+## Architecture
+
+The server is the **single source of truth** — it owns turn order, the timer,
+scores, the secret word, and stroke history. The client renders what it's told and
+sends intents. This prevents word leaks, canvas desync, and client-clock bugs.
+
+Server-side OOP model:
+
+- **`GameServer`** — room registry, settings validation, connect/disconnect and
+  reconnection handling.
+- **`Room`** — the only socket-aware model; owns players, the stroke buffer, and one
+  `Game`. Wires `Game`'s domain callbacks to Socket.IO broadcasts.
+- **`Game`** — the finite state machine (`lobby → choosing → drawing → roundEnd →
+  gameOver`), scoring, timer, hints, reactions. Pure logic, no socket knowledge —
+  which is what makes it unit-testable.
+- **`Player`** / **`WordBank`** — participant data (stable session token vs. current
+  socket) and word selection + mask/hint generation.
+- **`MessageHandler`** — one per connection; routes socket events to the models and
+  enforces authorization (host-only, drawer-only).
+
+A single shared `types/events.ts` defines every Socket.IO event and payload; it's kept
+identical in the client and server so the wire protocol is type-checked on both sides.
+
+See **[ARCHITECTURE.md](./ARCHITECTURE.md)** for the full design: the event contract,
+the state machine, the scoring formula, drawing sync, and the reconnection model.
 
 ## Project structure
 
 ```
 skribbl-clone/
-├── server/            # Node + Express + Socket.IO (game logic lives here)
+├── server/                 # Node + Express + Socket.IO
+│   ├── src/
+│   │   ├── index.ts            # bootstrap; serves the built client in prod
+│   │   ├── GameServer.ts       # registry, settings, connect/disconnect/resume
+│   │   ├── MessageHandler.ts   # socket event router + auth guards
+│   │   ├── models/             # Room, Game, Player, WordBank
+│   │   ├── types/              # events.ts (shared contract) + socket.ts
+│   │   └── data/words.json
+│   └── tests/                  # Vitest unit + integration suites
+├── client/                 # React + Vite frontend
 │   └── src/
-│       ├── index.ts           # bootstrap; serves the built client in prod
-│       ├── GameServer.ts      # room registry + settings validation
-│       ├── MessageHandler.ts  # socket event router + authorization guards
-│       ├── models/
-│       │   ├── Room.ts        # players + Game + stroke buffer; only socket-aware model
-│       │   ├── Game.ts        # the FSM: rounds, turns, timer, scoring (socket-free)
-│       │   ├── Player.ts
-│       │   └── WordBank.ts    # word picking + mask/hint generation
-│       └── types/events.ts    # SHARED wire contract (duplicated in client)
-├── client/            # React + Vite frontend
-│   └── src/
-│       ├── socket.ts, hooks/useGame.ts
-│       ├── components/CanvasBoard, Toolbar, Lobby, GameScreen, ChatPanel, …
-│       └── types/events.ts    # exact copy of the server contract
-├── ARCHITECTURE.md    # full design doc (class model, event contract, FSM)
-└── render.yaml        # one-click Render deployment blueprint
+│       ├── socket.ts, audio.ts, hooks/useGame.ts
+│       ├── components/         # Home, Lobby, GameScreen, CanvasBoard, Toolbar, …
+│       └── types/events.ts     # exact copy of the server contract
+├── ARCHITECTURE.md         # full design document
+└── render.yaml             # Render deployment blueprint
 ```
-
-See **[ARCHITECTURE.md](./ARCHITECTURE.md)** for the complete design: the OOP class
-model, the locked WebSocket event contract, the game state machine, the scoring
-formula, and the drawing-sync approach.
-
-## Running locally
-
-Requires Node.js 20+.
-
-```bash
-# 1. Install both packages
-npm run install:all          # or: npm --prefix server install && npm --prefix client install
-
-# 2. Start the backend (terminal 1) — http://localhost:3001
-npm run dev:server
-
-# 3. Start the frontend (terminal 2) — http://localhost:5173
-npm run dev:client
-```
-
-Open http://localhost:5173. To try a full game on one machine, open a second browser
-tab/window, create a room in one and join it (via code or invite link) in the other.
-In dev, Vite proxies `/socket.io` to the backend on port 3001.
-
-## Testing
-
-The backend has an automated test suite (Vitest) covering the game logic and the
-real-time layer:
-
-```bash
-npm test                       # from the repo root (runs the server suite)
-npm --prefix server run test:watch   # watch mode while developing
-```
-
-- **Unit tests** (`server/tests/game.test.ts`, `helpers.test.ts`) drive the `Game`
-  state machine directly with fake timers — scoring (rank + time), the drawer
-  share, round rotation, game-over, early end when everyone guesses, timeout,
-  hint reveals, word matching, and the drawer-leaves case. `Game` is pure logic
-  with no socket dependency, which is what makes this possible.
-- **Integration tests** (`server/tests/integration.test.ts`) spin up a real
-  Socket.IO server + clients and exercise create/join/start/guess, host
-  migration, and — importantly — **reconnection**: it verifies a stale
-  disconnect during a reconnect never marks a live player offline, and that a
-  genuinely dropped player is shown as reconnecting and then restored.
-
-## Production build
-
-The server serves the built client from the **same origin**, so there is no CORS or
-cross-service WebSocket configuration.
-
-```bash
-npm run build     # builds client -> client/dist, compiles server -> server/dist
-npm start         # serves app + WebSockets on http://localhost:3001
-```
-
-## Deployment (Render)
-
-WebSockets need a persistent server, so deploy the backend to **Render** or **Railway**
-— not Vercel/Netlify (their serverless functions can't hold a WebSocket open).
-
-Using the included blueprint:
-1. Push this repo to GitHub.
-2. In Render: **New → Blueprint**, select the repo. `render.yaml` provisions a single
-   web service that builds the client and serves it alongside the Socket.IO server.
-3. Deploy, then put the resulting URL in the **Live demo** line at the top of this file.
-
-Manual setup (equivalent):
-- **Build command:** `npm --prefix client install && npm --prefix client run build && npm --prefix server install && npm --prefix server run build`
-- **Start command:** `npm --prefix server start`
-- Render sets `PORT` automatically; the server reads it.
-
-## How it works (walkthrough notes)
-
-- **Drawing sync** — the drawer's pointer input is captured as strokes of
-  normalized `(x, y)` points (0–1), streamed as `draw_start`/`draw_move`/`draw_end`
-  (moves coalesced to one per animation frame). The server buffers stroke history per
-  room and rebroadcasts, so all clients — including the drawer, for consistency — render
-  from the same source, and late joiners get a full `canvas_state` replay.
-- **Game state** — a per-room finite state machine
-  (`lobby → choosing → drawing → roundEnd → gameOver`) lives in `Game.ts`, which is
-  pure logic with no socket knowledge. The round **timer is server-owned**; clients only
-  render a countdown from the authoritative `roundEndsAt`.
-- **No word leaks** — the plaintext word is sent only to the drawer via a targeted
-  `word_reveal`; every other client receives a masked form (`_ _ a`). Correct guesses
-  are never echoed as chat text.
-- **Word matching** — guesses are normalized (trim + lowercase + collapse whitespace);
-  an edit-distance-1 near miss is privately flagged as "close".
-- **Scoring** (skribbl.io-style, bounded scale) — a guesser's score is driven by
-  **time remaining** and modified by **guess rank**:
-  `timeScore = 20 + timeFraction × 180` (so 20–200), then `× rankMult`
-  (1.0, 0.9, 0.8 … floored at 0.5). Max for a perfect first guess is **200**.
-  The drawer earns `round(Σ guessers' points / eligibleGuessers × 0.5)` — scales
-  with how many guessed and how fast, always below the fastest guesser, and zero
-  if nobody guesses. Example (all guess instantly): 1st 200, 2nd 180, 3rd 160 →
-  drawer 90.
