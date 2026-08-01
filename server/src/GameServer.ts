@@ -146,14 +146,42 @@ export class GameServer {
   }
 
   private finalizeLeave(token: string): void {
-    this.graceTimers.delete(token);
+    const timer = this.graceTimers.get(token);
+    if (timer) {
+      clearTimeout(timer);
+      this.graceTimers.delete(token);
+    }
     const room = this.roomForToken(token);
+    if (!room) {
+      this.playerToRoom.delete(token);
+      return;
+    }
+    // If the host leaves, tear the whole room down instead of migrating.
+    if (room.hostId === token) {
+      this.closeRoom(room);
+      return;
+    }
     this.playerToRoom.delete(token);
-    if (!room) return;
     room.removePlayer(token);
     if (room.isEmpty) {
       room.game.clearTimers();
       this.rooms.delete(room.id);
     }
+  }
+
+  /** Destroy a room and return every remaining player to the home screen. */
+  private closeRoom(room: Room): void {
+    room.game.clearTimers();
+    for (const token of room.players.keys()) {
+      const timer = this.graceTimers.get(token);
+      if (timer) {
+        clearTimeout(timer);
+        this.graceTimers.delete(token);
+      }
+      this.playerToRoom.delete(token);
+    }
+    room.broadcast('room_closed'); // notify members still in the socket.io room
+    this.io.in(room.id).socketsLeave(room.id);
+    this.rooms.delete(room.id);
   }
 }

@@ -193,7 +193,7 @@ describe('integration: rooms, gameplay, reconnection', () => {
     expect(quinn?.connected).toBe(true);
   });
 
-  it('migrates host when the host leaves', async () => {
+  it('closes the room for everyone when the host leaves', async () => {
     server = await startServer();
     const host = mkClient(server.url, 'tok-h3');
     await once(host, 'connect');
@@ -206,11 +206,33 @@ describe('integration: rooms, gameplay, reconnection', () => {
     await once(p, 'connect');
     await emitAck(p, 'join_room', { roomId: created.roomId, playerName: 'Next' });
 
-    const migrated = new Promise<string | undefined>((res) => {
-      p.on('player_left', (d) => res(d.newHostId));
-    });
+    const closed = new Promise<boolean>((res) => p.on('room_closed', () => res(true)));
     host.emit('leave_room' as never);
-    const newHostId = await Promise.race([migrated, delay(1000).then(() => 'timeout')]);
-    expect(newHostId).toBe('tok-next');
+    const got = await Promise.race([closed, delay(1000).then(() => false)]);
+    expect(got).toBe(true);
+  });
+
+  it('keeps the room open when a NON-host leaves', async () => {
+    server = await startServer();
+    const host = mkClient(server.url, 'tok-h4');
+    await once(host, 'connect');
+    const created = await emitAck<{ ok: boolean; roomId: string }>(host, 'create_room', {
+      hostName: 'Host',
+      settings: {},
+    });
+
+    const guest = mkClient(server.url, 'tok-guest');
+    await once(guest, 'connect');
+    await emitAck(guest, 'join_room', { roomId: created.roomId, playerName: 'Guest' });
+
+    let hostGotClosed = false;
+    host.on('room_closed', () => (hostGotClosed = true));
+    const left = new Promise<string>((res) => host.on('player_left', (d) => res(d.playerId)));
+
+    guest.emit('leave_room' as never);
+    const leftId = await Promise.race([left, delay(1000).then(() => 'timeout')]);
+    expect(leftId).toBe('tok-guest');
+    await delay(200);
+    expect(hostGotClosed).toBe(false);
   });
 });

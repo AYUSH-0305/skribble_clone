@@ -59,6 +59,22 @@ export function useGame(): GameApi {
     setMessages((prev) => [...prev.slice(-199), { ...entry, id: msgSeq++ }]);
   }, []);
 
+  const resetToHome = useCallback(() => {
+    youIdRef.current = null;
+    setYou(null);
+    setRoomId(null);
+    setState(null);
+    setMessages([]);
+    setWordOptions(null);
+    setMyWord(null);
+    setRoundEnd(null);
+    setGameOver(null);
+    // Drop any ?room= so a stale invite code doesn't linger in the URL.
+    if (window.history.replaceState) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   useEffect(() => {
     const onConnect = () => setConnected(true);
     const onDisconnect = () => setConnected(false);
@@ -144,13 +160,16 @@ export function useGame(): GameApi {
     // room (e.g. reloaded after the grace window lapsed) — drop back to Home.
     const onResumeFailed = () => {
       if (youIdRef.current) {
-        youIdRef.current = null;
-        setYou(null);
-        setRoomId(null);
-        setState(null);
+        resetToHome();
         setError('Your session expired — please rejoin.');
         setTimeout(() => setError(null), 4000);
       }
+    };
+
+    const onRoomClosed = () => {
+      resetToHome();
+      setError('The host closed the room.');
+      setTimeout(() => setError(null), 4000);
     };
 
     socket.on('connect', onConnect);
@@ -169,6 +188,7 @@ export function useGame(): GameApi {
     socket.on('error_message', onError);
     socket.on('resumed', onResumed);
     socket.on('resume_failed', onResumeFailed);
+    socket.on('room_closed', onRoomClosed);
 
     return () => {
       socket.off('connect', onConnect);
@@ -187,8 +207,9 @@ export function useGame(): GameApi {
       socket.off('error_message', onError);
       socket.off('resumed', onResumed);
       socket.off('resume_failed', onResumeFailed);
+      socket.off('room_closed', onRoomClosed);
     };
-  }, [pushMsg]);
+  }, [pushMsg, resetToHome]);
 
   const createRoom = useCallback(
     (name: string, settings: Partial<RoomSettings>, isPrivate: boolean) => {
@@ -220,20 +241,8 @@ export function useGame(): GameApi {
 
   const leaveRoom = useCallback(() => {
     socket.emit('leave_room');
-    youIdRef.current = null;
-    setYou(null);
-    setRoomId(null);
-    setState(null);
-    setMessages([]);
-    setWordOptions(null);
-    setMyWord(null);
-    setRoundEnd(null);
-    setGameOver(null);
-    // Clear ?room= so a leave doesn't leave a stale invite code in the URL.
-    if (window.history.replaceState) {
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
+    resetToHome();
+  }, [resetToHome]);
 
   const startGame = useCallback(() => socket.emit('start_game'), []);
   const chooseWord = useCallback((word: string) => socket.emit('word_chosen', { word }), []);

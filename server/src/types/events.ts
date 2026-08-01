@@ -136,6 +136,10 @@ export interface ServerToClientEvents {
   resumed: (data: { you: PlayerView; roomId: string; state: GameStateView }) => void;
   resume_failed: () => void;
 
+  // The host left (or their grace window expired) — the room is gone and every
+  // remaining player is returned to the home screen.
+  room_closed: () => void;
+
   // Game state
   game_state: (state: GameStateView) => void;
   round_start: (data: { drawerId: string; drawerName: string; round: number }) => void;
