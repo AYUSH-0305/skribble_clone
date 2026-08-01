@@ -10,7 +10,9 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc && node -e \"require('fs').cpSync('src/data','dist/data',{recursive:true})\"",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -19,7 +21,9 @@
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^22.10.5",
+    "socket.io-client": "^4.8.3",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.10"
   }
 }

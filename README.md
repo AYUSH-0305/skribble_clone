@@ -84,6 +84,27 @@ Open http://localhost:5173. To try a full game on one machine, open a second bro
 tab/window, create a room in one and join it (via code or invite link) in the other.
 In dev, Vite proxies `/socket.io` to the backend on port 3001.
 
+## Testing
+
+The backend has an automated test suite (Vitest) covering the game logic and the
+real-time layer:
+
+```bash
+npm test                       # from the repo root (runs the server suite)
+npm --prefix server run test:watch   # watch mode while developing
+```
+
+- **Unit tests** (`server/tests/game.test.ts`, `helpers.test.ts`) drive the `Game`
+  state machine directly with fake timers — scoring (rank + time), the drawer
+  share, round rotation, game-over, early end when everyone guesses, timeout,
+  hint reveals, word matching, and the drawer-leaves case. `Game` is pure logic
+  with no socket dependency, which is what makes this possible.
+- **Integration tests** (`server/tests/integration.test.ts`) spin up a real
+  Socket.IO server + clients and exercise create/join/start/guess, host
+  migration, and — importantly — **reconnection**: it verifies a stale
+  disconnect during a reconnect never marks a live player offline, and that a
+  genuinely dropped player is shown as reconnecting and then restored.
+
 ## Production build
 
 The server serves the built client from the **same origin**, so there is no CORS or

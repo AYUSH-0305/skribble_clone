@@ -82,11 +82,16 @@ export class GameServer {
    * Marks a player as temporarily disconnected and schedules removal after the
    * grace window. If they reconnect first (`tryResume`), the timer is cancelled.
    */
-  handleDisconnect(token: string): void {
+  handleDisconnect(token: string, socketId: string): void {
     const room = this.roomForToken(token);
     if (!room) return;
     const player = room.players.get(token);
     if (!player) return;
+
+    // Ignore a stale disconnect: if this player has already been re-attached to
+    // a newer socket (reconnect race), the old socket's disconnect must NOT mark
+    // the live player offline or arm the removal timer.
+    if (player.socketId !== socketId) return;
 
     player.connected = false;
     player.disconnectedAt = Date.now();

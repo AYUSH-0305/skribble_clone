@@ -35,7 +35,7 @@ io.on('connection', (socket) => {
   new MessageHandler(socket, gameServer);
   gameServer.tryResume(socket); // re-attach if this token was mid-game
 
-  socket.on('disconnect', () => gameServer.handleDisconnect(socket.data.token));
+  socket.on('disconnect', () => gameServer.handleDisconnect(socket.data.token, socket.id));
 });
 
 app.get('/health', (_req, res) => {
