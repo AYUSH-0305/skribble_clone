@@ -98,6 +98,9 @@ input:focus { border-color: var(--accent); }
 .logo span { color: var(--accent2); font-weight: 800; }
 .logo em { color: var(--text); font-style: normal; font-weight: 300; }
 .home .card { width: min(420px, 100%); display: flex; flex-direction: column; gap: 14px; }
+.home .create-card { width: min(460px, 100%); }
+.home .card-head h2 { font-size: 20px; }
+.home .settings { border-top: none; padding-top: 0; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field span { font-size: 13px; color: var(--muted); }
 .field input { width: 100%; }

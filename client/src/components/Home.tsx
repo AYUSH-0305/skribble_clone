@@ -12,20 +12,63 @@ export function Home({ onCreate, onJoin, prefillRoom }: Props) {
   const [name, setName] = useState('');
   const [roomId, setRoomId] = useState(prefillRoom ?? '');
   const [settings, setSettings] = useState<RoomSettings>({ ...DEFAULT_SETTINGS });
-  const [showSettings, setShowSettings] = useState(false);
-
-  const nameOk = name.trim().length > 0;
+  const [mode, setMode] = useState<'home' | 'create'>('home');
 
   const set = <K extends keyof RoomSettings>(k: K, v: RoomSettings[K]) =>
     setSettings((s) => ({ ...s, [k]: v }));
 
+  const logo = (
+    <h1 className="logo">
+      <span>skribbl</span>
+      <em>clone</em>
+    </h1>
+  );
+
+  // ---- Create-room configuration (separate card) ----
+  if (mode === 'create') {
+    return (
+      <div className="home">
+        {logo}
+        <div className="card create-card">
+          <div className="card-head">
+            <h2>Create private room</h2>
+            <button className="ghost" onClick={() => setMode('home')}>
+              ← Back
+            </button>
+          </div>
+
+          <label className="field">
+            <span>Your name</span>
+            <input
+              autoFocus
+              value={name}
+              maxLength={20}
+              placeholder="Enter a nickname"
+              onChange={(e) => setName(e.target.value)}
+            />
+          </label>
+
+          <div className="settings">
+            <Range label="Rounds" min={2} max={10} value={settings.rounds} onChange={(v) => set('rounds', v)} />
+            <Range label="Draw time (s)" min={15} max={240} step={5} value={settings.drawTime} onChange={(v) => set('drawTime', v)} />
+            <Range label="Max players" min={2} max={20} value={settings.maxPlayers} onChange={(v) => set('maxPlayers', v)} />
+            <Range label="Word choices" min={1} max={5} value={settings.wordCount} onChange={(v) => set('wordCount', v)} />
+            <Range label="Hints" min={0} max={5} value={settings.hints} onChange={(v) => set('hints', v)} />
+          </div>
+
+          <button className="primary" onClick={() => onCreate(name, settings, true)}>
+            Create room
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ---- Landing: join an existing room, or start the create flow ----
+  const canJoin = name.trim().length > 0 && roomId.trim().length >= 4;
   return (
     <div className="home">
-      <h1 className="logo">
-        <span>skribbl</span>
-        <em>clone</em>
-      </h1>
-
+      {logo}
       <div className="card">
         <label className="field">
           <span>Your name</span>
@@ -44,30 +87,16 @@ export function Home({ onCreate, onJoin, prefillRoom }: Props) {
             maxLength={4}
             onChange={(e) => setRoomId(e.target.value.toUpperCase())}
           />
-          <button disabled={!nameOk || roomId.trim().length < 4} onClick={() => onJoin(roomId, name)}>
+          <button disabled={!canJoin} onClick={() => onJoin(roomId, name)}>
             Join
           </button>
         </div>
 
         <div className="or">or</div>
 
-        <button className="primary" disabled={!nameOk} onClick={() => onCreate(name, settings, true)}>
+        <button className="primary" onClick={() => setMode('create')}>
           Create private room
         </button>
-
-        <button className="link" onClick={() => setShowSettings((v) => !v)}>
-          {showSettings ? 'Hide' : 'Show'} room settings
-        </button>
-
-        {showSettings && (
-          <div className="settings">
-            <Range label="Rounds" min={2} max={10} value={settings.rounds} onChange={(v) => set('rounds', v)} />
-            <Range label="Draw time (s)" min={15} max={240} step={5} value={settings.drawTime} onChange={(v) => set('drawTime', v)} />
-            <Range label="Max players" min={2} max={20} value={settings.maxPlayers} onChange={(v) => set('maxPlayers', v)} />
-            <Range label="Word choices" min={1} max={5} value={settings.wordCount} onChange={(v) => set('wordCount', v)} />
-            <Range label="Hints" min={0} max={5} value={settings.hints} onChange={(v) => set('hints', v)} />
-          </div>
-        )}
       </div>
     </div>
   );
