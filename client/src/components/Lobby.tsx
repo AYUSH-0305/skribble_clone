@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LogOut } from 'lucide-react';
 import type { GameStateView, PlayerView } from '../types/events';
 import { PlayerList } from './PlayerList';
 
@@ -34,7 +35,7 @@ export function Lobby({ roomId, state, you, onStart, onLeave }: Props) {
         <div className="card-head">
           <h2>Waiting room</h2>
           <button className="ghost" onClick={onLeave}>
-            ← Leave
+            <LogOut size={16} strokeWidth={2.5} /> Leave
           </button>
         </div>
         <div className="room-code">

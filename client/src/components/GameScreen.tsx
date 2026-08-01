@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { LogOut, Timer as TimerIcon, Trophy, Crown, Medal } from 'lucide-react';
 import { socket } from '../socket';
 import type { DrawTool, PlayerView } from '../types/events';
 import type { GameApi } from '../hooks/useGame';
@@ -32,13 +33,14 @@ export function GameScreen({ api }: Props) {
     <div className="game">
       <header className="game-top">
         <button className="ghost leave-btn" onClick={api.leaveRoom} title="Leave room">
-          ← Leave
+          <LogOut size={16} strokeWidth={2.5} /> Leave
         </button>
         <div className="round">
           Round <strong>{state.round}</strong>/{state.totalRounds}
         </div>
         <div className="timer" data-low={secondsLeft <= 10}>
-          ⏱ {state.phase === 'drawing' ? secondsLeft : '--'}
+          <TimerIcon size={17} strokeWidth={2.5} />
+          {state.phase === 'drawing' ? secondsLeft : '--'}
         </div>
         <div className="word-display">
           {isDrawer && myWord ? (
@@ -146,11 +148,17 @@ function GameOverCard({
   return (
     <div className="overlay">
       <div className="game-over card">
-        <h2>🏆 {winner ? `${winner.name} wins!` : 'Game over'}</h2>
+        <h2>
+          <Trophy size={30} strokeWidth={2.5} className="trophy" />
+          {winner ? `${winner.name} wins!` : 'Game over'}
+        </h2>
         <ol className="leaderboard">
-          {leaderboard.map((p) => (
+          {leaderboard.map((p, i) => (
             <li key={p.id}>
-              <span>{p.name}</span>
+              <span className="place">
+                <RankMark index={i} />
+                {p.name}
+              </span>
               <span>{p.score}</span>
             </li>
           ))}
@@ -170,6 +178,14 @@ function GameOverCard({
       </div>
     </div>
   );
+}
+
+/** Podium marker: crown for 1st, medals for 2nd/3rd, a numbered chip otherwise. */
+function RankMark({ index }: { index: number }) {
+  if (index === 0) return <Crown size={20} strokeWidth={2.5} className="mark gold" />;
+  if (index === 1) return <Medal size={19} strokeWidth={2.5} className="mark silver" />;
+  if (index === 2) return <Medal size={19} strokeWidth={2.5} className="mark bronze" />;
+  return <span className="mark num">{index + 1}</span>;
 }
 
 /** Live seconds-remaining derived from the server's authoritative roundEndsAt. */

@@ -8,9 +8,20 @@ import type {
 import { Player } from './Player.js';
 import { WordBank } from './WordBank.js';
 
-// Scoring tunables
-const MAX_GUESS_POINTS = 300;
-const MIN_GUESS_POINTS = 50;
+// ---------------------------------------------------------------------------
+// Scoring — modelled on skribbl.io. A guesser's score has TWO parts:
+//   1. a rank component: earlier guessers score more (1st > 2nd > 3rd ...)
+//   2. a time component: the more time is left when you guess, the bigger the bonus
+// The drawer earns a share of the guessers' points, scaled by how many of the
+// eligible players actually guessed — so a clear drawing that many people guess
+// quickly is rewarded. If nobody guesses, nobody scores (drawer included).
+// ---------------------------------------------------------------------------
+const GUESS_BASE_FIRST = 300; // base points for the 1st correct guesser
+const GUESS_RANK_STEP = 40; // each later guesser's base drops by this
+const GUESS_BASE_MIN = 100; // floor for the base regardless of rank
+const GUESS_TIME_BONUS = 100; // max extra, scaled by fraction of time remaining
+const DRAWER_SHARE = 0.7; // drawer's cut of the average guesser score
+
 const CHOOSE_TIME_MS = 15_000; // drawer auto-pick fallback
 const ROUND_END_PAUSE_MS = 5_000; // reveal word before next turn
 
@@ -184,7 +195,7 @@ export class Game {
 
     if (guess === answer) {
       const order = this.connectedPlayers.filter((p) => p.hasGuessedThisRound).length + 1;
-      const points = this.computeGuessPoints();
+      const points = this.computeGuessScore(order);
       player.hasGuessedThisRound = true;
       player.guessedAt = Date.now();
       player.guessOrder = order;
@@ -204,12 +215,16 @@ export class Game {
     return { correct: false, close };
   }
 
-  private computeGuessPoints(): number {
-    if (this.roundEndsAt == null) return MIN_GUESS_POINTS;
-    const timeLeft = Math.max(0, this.roundEndsAt - Date.now()) / 1000;
-    const frac = timeLeft / this.settings.drawTime;
-    const raw = Math.round(MAX_GUESS_POINTS * frac);
-    return Math.max(MIN_GUESS_POINTS, Math.min(MAX_GUESS_POINTS, raw));
+  /**
+   * A correct guesser's score = rank base (earlier = more) + time bonus (more
+   * time left = more). `rank` is 1 for the first correct guesser, 2 for the
+   * next, and so on.
+   */
+  private computeGuessScore(rank: number): number {
+    const base = Math.max(GUESS_BASE_MIN, GUESS_BASE_FIRST - (rank - 1) * GUESS_RANK_STEP);
+    const timeLeftMs = this.roundEndsAt == null ? 0 : Math.max(0, this.roundEndsAt - Date.now());
+    const timeFrac = Math.min(1, timeLeftMs / (this.settings.drawTime * 1000));
+    return base + Math.round(timeFrac * GUESS_TIME_BONUS);
   }
 
   private allGuessed(): boolean {
@@ -229,12 +244,15 @@ export class Game {
     const word = this.currentWord ?? '';
     const drawer = this.drawerId ? this.players.get(this.drawerId) : null;
 
-    // Drawer earns points scaled by how many guessed correctly.
+    // Drawer earns a share of the guessers' points, scaled by participation:
+    //   (sum of correct guessers' points / eligible guessers) * DRAWER_SHARE.
+    // More people guessing (and faster) => bigger drawer reward. Nobody guessed
+    // => drawer scores nothing, matching skribbl.
     const guessers = this.connectedPlayers.filter((p) => p.id !== this.drawerId);
     const correct = guessers.filter((p) => p.hasGuessedThisRound);
     if (drawer && guessers.length > 0 && correct.length > 0) {
-      const avg = correct.reduce((s, p) => s + this.pointsEarnedBy(p), 0) / correct.length;
-      const drawerPoints = Math.round(avg * (correct.length / guessers.length));
+      const sum = correct.reduce((s, p) => s + this.pointsEarnedBy(p), 0);
+      const drawerPoints = Math.round((sum / guessers.length) * DRAWER_SHARE);
       drawer.score += drawerPoints;
       this.roundPointsCache.set(drawer.id, drawerPoints);
     }

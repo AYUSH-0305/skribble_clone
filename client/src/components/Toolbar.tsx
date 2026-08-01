@@ -1,4 +1,7 @@
+import { Pencil, Eraser, Undo2, Trash2 } from 'lucide-react';
 import type { DrawTool } from '../types/events';
+
+const ICON = { size: 20, strokeWidth: 2.5 } as const;
 
 const PALETTE = [
   '#000000', '#7f7f7f', '#c1c1c1', '#ffffff',
@@ -57,14 +60,18 @@ export function Toolbar({ color, size, tool, onColor, onSize, onTool, onUndo, on
       </div>
 
       <div className="tools">
-        <button className={tool === 'pen' ? 'active' : ''} onClick={() => onTool('pen')} title="Pen">
-          ✏️
+        <button className={tool === 'pen' ? 'active' : ''} onClick={() => onTool('pen')} title="Pen" aria-label="Pen">
+          <Pencil {...ICON} />
         </button>
-        <button className={tool === 'eraser' ? 'active' : ''} onClick={() => onTool('eraser')} title="Eraser">
-          🧽
+        <button className={tool === 'eraser' ? 'active' : ''} onClick={() => onTool('eraser')} title="Eraser" aria-label="Eraser">
+          <Eraser {...ICON} />
         </button>
-        <button onClick={onUndo} title="Undo">↶</button>
-        <button onClick={onClear} title="Clear canvas">🗑️</button>
+        <button onClick={onUndo} title="Undo" aria-label="Undo">
+          <Undo2 {...ICON} />
+        </button>
+        <button onClick={onClear} title="Clear canvas" aria-label="Clear canvas">
+          <Trash2 {...ICON} />
+        </button>
       </div>
     </div>
   );

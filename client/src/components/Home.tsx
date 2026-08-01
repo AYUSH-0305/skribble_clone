@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import type { RoomSettings } from '../types/events';
 import { DEFAULT_SETTINGS } from '../types/events';
 
@@ -38,7 +39,7 @@ export function Home({ onCreate, onJoin, prefillRoom }: Props) {
           <div className="card-head">
             <h2>Create private room</h2>
             <button className="ghost" onClick={() => setMode('home')}>
-              ← Back
+              <ArrowLeft size={16} strokeWidth={2.5} /> Back
             </button>
           </div>
 

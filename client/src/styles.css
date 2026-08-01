@@ -68,6 +68,9 @@ button:disabled {
   box-shadow: var(--shadow-sm);
 }
 button:focus-visible { outline: 3px dashed var(--sky); outline-offset: 2px; }
+/* icons sit inline with button labels and inherit the ink color */
+button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+button svg { display: block; flex: none; }
 
 button.primary { background: var(--tomato); color: var(--ink); box-shadow: var(--shadow); width: 100%; padding: 13px; font-size: 17px; }
 button.primary:hover { box-shadow: 7px 7px 0 var(--ink); }
@@ -232,7 +235,7 @@ input:focus { border-color: var(--tomato); box-shadow: var(--shadow-sm); }
 .rank { color: var(--ink-soft); font-size: 12px; width: 22px; font-family: var(--font-display); }
 .pname { flex: 1; display: flex; align-items: center; gap: 6px; }
 .score { font-family: var(--font-display); font-weight: 700; color: var(--ink); }
-.badge { font-size: 10px; padding: 1px 6px; border-radius: 6px; border: 1.5px solid var(--ink); font-weight: 800; }
+.badge { font-size: 10px; padding: 2px 6px; border-radius: 6px; border: 1.5px solid var(--ink); font-weight: 800; display: inline-flex; align-items: center; gap: 3px; }
 .badge.host { background: var(--tomato); color: #fff; }
 .badge.ok { background: var(--grass); color: #fff; }
 .badge.off { background: var(--sun); color: var(--ink); font-size: 9px; }
@@ -249,7 +252,8 @@ input:focus { border-color: var(--tomato); box-shadow: var(--shadow-sm); }
 .timer {
   font-family: var(--font-display); font-weight: 700; font-size: 18px;
   background: var(--sun); border: 2.5px solid var(--ink); box-shadow: var(--shadow-sm);
-  padding: 4px 14px; border-radius: 20px; min-width: 68px; text-align: center;
+  padding: 4px 14px; border-radius: 20px; min-width: 68px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
 }
 .timer[data-low='true'] { background: var(--tomato); color: var(--ink); animation: pulse 0.7s ease-in-out infinite; }
 @keyframes pulse { 50% { transform: scale(1.08); } }
@@ -359,24 +363,26 @@ input:focus { border-color: var(--tomato); box-shadow: var(--shadow-sm); }
 .deltas .plus { color: var(--grass); font-family: var(--font-display); font-weight: 700; }
 .deltas .zero { color: var(--ink-soft); }
 
-.game-over h2 { font-size: 30px; }
+.game-over h2 { font-size: 30px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.game-over .trophy { color: #e6a700; }
 .game-over-actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; margin-top: 4px; }
-.leaderboard { list-style: none; counter-reset: rank; padding: 0; margin: 14px 0; }
+.leaderboard { list-style: none; padding: 0; margin: 14px 0; }
 .leaderboard li {
-  counter-increment: rank; display: flex; justify-content: space-between; align-items: center;
+  display: flex; justify-content: space-between; align-items: center;
   padding: 9px 13px; background: var(--paper); border: 2.5px solid var(--ink);
   border-radius: var(--radius-sm); margin-bottom: 7px; font-weight: 800;
 }
-.leaderboard li::before {
-  content: counter(rank); font-family: var(--font-display);
-  color: var(--ink); background: var(--paper-2); border: 2px solid var(--ink);
-  border-radius: 50%; width: 26px; height: 26px; display: inline-grid; place-items: center;
-  margin-right: 10px; font-size: 13px;
+.leaderboard .place { display: inline-flex; align-items: center; gap: 10px; }
+.leaderboard .mark { width: 24px; display: inline-flex; justify-content: center; }
+.leaderboard .mark.gold { color: #e6a700; }
+.leaderboard .mark.silver { color: #8b93a1; }
+.leaderboard .mark.bronze { color: #b06a34; }
+.leaderboard .mark.num {
+  font-family: var(--font-display); font-size: 13px; color: var(--ink);
+  background: var(--paper-2); border: 2px solid var(--ink);
+  border-radius: 50%; width: 24px; height: 24px; align-items: center;
 }
 .leaderboard li:nth-child(1) { background: var(--sun); }
-.leaderboard li:nth-child(1)::before { content: '🥇'; border: none; background: none; }
-.leaderboard li:nth-child(2)::before { content: '🥈'; border: none; background: none; }
-.leaderboard li:nth-child(3)::before { content: '🥉'; border: none; background: none; }
 
 /* ============================ Responsive ================================== */
 @media (max-width: 900px) {
