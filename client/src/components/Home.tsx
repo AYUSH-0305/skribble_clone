@@ -66,17 +66,28 @@ export function Home({ onCreate, onJoin, prefillRoom }: Props) {
 
   // ---- Landing: join an existing room, or start the create flow ----
   const canJoin = name.trim().length > 0 && roomId.trim().length >= 4;
+  const invited = !!prefillRoom; // arrived via an invite link
   return (
     <div className="home">
       {logo}
       <div className="card">
+        {invited && (
+          <div className="invite-banner">
+            You're joining room <strong>{roomId}</strong> — just enter a name.
+          </div>
+        )}
+
         <label className="field">
           <span>Your name</span>
           <input
+            autoFocus={invited}
             value={name}
             maxLength={20}
             placeholder="Enter a nickname"
             onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && canJoin) onJoin(roomId, name);
+            }}
           />
         </label>
 
@@ -85,18 +96,27 @@ export function Home({ onCreate, onJoin, prefillRoom }: Props) {
             value={roomId}
             placeholder="Room code"
             maxLength={4}
-            onChange={(e) => setRoomId(e.target.value.toUpperCase())}
+            onChange={(e) => setRoomId(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
           />
-          <button disabled={!canJoin} onClick={() => onJoin(roomId, name)}>
+          <button className={invited ? 'primary' : ''} disabled={!canJoin} onClick={() => onJoin(roomId, name)}>
             Join
           </button>
         </div>
 
-        <div className="or">or</div>
+        {!invited && (
+          <>
+            <div className="or">or</div>
+            <button className="primary" onClick={() => setMode('create')}>
+              Create private room
+            </button>
+          </>
+        )}
 
-        <button className="primary" onClick={() => setMode('create')}>
-          Create private room
-        </button>
+        {invited && (
+          <button className="link" onClick={() => setMode('create')}>
+            or create your own room
+          </button>
+        )}
       </div>
     </div>
   );

@@ -107,6 +107,16 @@ input:focus { border-color: var(--accent); }
 .join-row { display: flex; gap: 8px; }
 .join-row input { flex: 1; text-transform: uppercase; letter-spacing: 3px; }
 .or { text-align: center; color: var(--muted); font-size: 13px; }
+.invite-banner {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  text-align: center;
+}
+.invite-banner strong { color: var(--accent2); letter-spacing: 2px; }
 .settings { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; border-top: 1px solid var(--line); }
 .range { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
 .range strong { color: var(--text); }
@@ -242,9 +252,94 @@ input:focus { border-color: var(--accent); }
 .leaderboard li::before { content: '#' counter(rank); color: var(--muted); margin-right: 8px; }
 .leaderboard li:first-child { background: linear-gradient(90deg, rgba(99,102,241,0.35), var(--panel2)); }
 
-/* ---- Responsive ---- */
+/* ========================================================================
+   Responsive
+   ======================================================================== */
+
+/* ---- Tablet & phone: single-column game, stacked panels ---- */
 @media (max-width: 900px) {
-  .game-body { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
   .lobby { grid-template-columns: 1fr; }
-  .game-body .left { order: 3; }
+
+  /* Release the fixed full-height shell so tall stacked content can scroll. */
+  html, body, #root, .app { height: auto; min-height: 100%; }
+  .game { height: auto; min-height: 100%; }
+
+  .game-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  /* Players -> compact horizontal strip on top */
+  .game-body .left { order: 1; overflow: visible; padding: 8px; }
+  .center { order: 2; }
+  .game-body .right { order: 3; overflow: visible; }
+
+  /* On a page that now grows naturally, bound the chat log so it scrolls
+     internally and the input stays reachable below the canvas. */
+  .game-body .right .chat { height: auto; }
+  .game-body .right .chat-log { max-height: 40vh; min-height: 150px; }
+
+  .game-body .left .player-list { flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 4px; }
+  .game-body .left .player-list li {
+    flex: 0 0 auto;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+  }
+  .game-body .left .player-list li.drawing { border-bottom-color: var(--warn); }
+  .game-body .left .player-list li.guessed { border-bottom-color: var(--ok); }
+  .game-body .left .rank { display: none; }
+
+  /* Cap the canvas so it never pushes the chat off-screen */
+  .board { max-height: 58vh; }
+}
+
+/* ---- Phones ---- */
+@media (max-width: 640px) {
+  /* 16px inputs prevent iOS Safari from auto-zooming on focus */
+  input, .chat-input input, .field input, .join-row input { font-size: 16px; }
+
+  .logo { font-size: 40px; }
+  .home { padding: 16px; gap: 16px; }
+  .card { padding: 14px; }
+
+  .game-top {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 8px 12px;
+  }
+  .word-display { margin-left: auto; }
+  .word-display .word, .word-display .mask { font-size: 18px; letter-spacing: 2px; }
+  .timer { font-size: 16px; min-width: 58px; }
+
+  /* Toolbar: center, wrap, bigger touch targets */
+  .toolbar { justify-content: center; gap: 10px 14px; }
+  .swatches { grid-template-columns: repeat(8, 1fr); gap: 5px; }
+  .swatch { width: 28px; height: 28px; }
+  .size, .tools button { width: 44px; height: 44px; }
+  .tools { margin-left: 0; }
+
+  .board { max-height: 52vh; }
+
+  .invite { flex-direction: column; }
+  .invite button { width: 100%; }
+
+  .word-options button { font-size: 16px; padding: 12px 18px; }
+  .round-end, .game-over { min-width: 0; width: 100%; }
+  .overlay { padding: 12px; }
+}
+
+/* ---- Small / older phones ---- */
+@media (max-width: 380px) {
+  .logo { font-size: 34px; }
+  .swatch { width: 26px; height: 26px; }
+  .word-display .word, .word-display .mask { font-size: 16px; }
+  .game-body .right .chat-log { max-height: 34vh; }
+}
+
+/* ---- Landscape phones: keep it tight so the canvas stays visible ---- */
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .board { max-height: 80vh; }
+  .game-body .right .chat-log { max-height: 30vh; }
 }

@@ -5,7 +5,11 @@ import { GameScreen } from './components/GameScreen';
 
 export default function App() {
   const api = useGame();
-  const prefillRoom = new URLSearchParams(window.location.search).get('room') ?? undefined;
+  // Pull ?room=CODE from an invite link and normalize it to the room-code format.
+  const rawRoom = new URLSearchParams(window.location.search).get('room');
+  const prefillRoom = rawRoom
+    ? rawRoom.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4) || undefined
+    : undefined;
 
   const inRoom = api.roomId && api.state;
 
