@@ -50,6 +50,7 @@ export interface GameCallbacks {
   }): void;
   onGameOver(data: { winnerId: string | null }): void;
   onClearCanvas(): void;
+  onReactions(data: { likes: number; dislikes: number }): void;
 }
 
 /**
@@ -68,6 +69,7 @@ export class Game {
   roundEndsAt: number | null = null;
 
   private wordOptions: string[] = [];
+  private reactions = new Map<string, 'like' | 'dislike'>(); // playerId -> reaction
   private tickTimer: NodeJS.Timeout | null = null;
   private chooseTimer: NodeJS.Timeout | null = null;
   private advanceTimer: NodeJS.Timeout | null = null;
@@ -110,7 +112,9 @@ export class Game {
     this.hintsRevealed = 0;
     this.roundEndsAt = null;
     for (const p of this.players.values()) p.resetRound();
+    this.reactions.clear();
     this.cb.onClearCanvas();
+    this.cb.onReactions({ likes: 0, dislikes: 0 });
 
     const drawer = this.drawerId ? this.players.get(this.drawerId) : null;
     if (!drawer) {
@@ -224,6 +228,29 @@ export class Game {
    * A correct guesser's score: time-driven, reduced a little per rank.
    * `rank` is 1 for the first correct guesser, 2 for the next, and so on.
    */
+  /** A non-drawer likes/dislikes the current drawing (one reaction each, toggodable). */
+  react(playerId: string, type: 'like' | 'dislike'): void {
+    if (this.phase !== 'drawing') return;
+    if (playerId === this.drawerId) return;
+    if (!this.players.has(playerId)) return;
+    if (this.reactions.get(playerId) === type) {
+      this.reactions.delete(playerId); // clicking the same reaction again clears it
+    } else {
+      this.reactions.set(playerId, type);
+    }
+    this.cb.onReactions(this.reactionCounts());
+  }
+
+  private reactionCounts(): { likes: number; dislikes: number } {
+    let likes = 0;
+    let dislikes = 0;
+    for (const r of this.reactions.values()) {
+      if (r === 'like') likes++;
+      else dislikes++;
+    }
+    return { likes, dislikes };
+  }
+
   private computeGuessScore(rank: number): number {
     const timeLeftMs = this.roundEndsAt == null ? 0 : Math.max(0, this.roundEndsAt - Date.now());
     const timeFrac = Math.min(1, timeLeftMs / (this.settings.drawTime * 1000));

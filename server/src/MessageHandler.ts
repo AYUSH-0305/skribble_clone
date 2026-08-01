@@ -46,6 +46,8 @@ export class MessageHandler {
     s.on('join_room', ({ roomId, playerName }, ack) => {
       const room = this.server.getRoom(roomId ?? '');
       if (!room) return ack?.({ ok: false, error: 'Room not found' });
+      if (room.isBanned(this.token))
+        return ack?.({ ok: false, error: 'You were kicked from this room' });
       if (room.players.size >= room.settings.maxPlayers)
         return ack?.({ ok: false, error: 'Room is full' });
 
@@ -164,6 +166,38 @@ export class MessageHandler {
       const clean = typeof text === 'string' ? text.slice(0, MAX_CHAT_LEN) : '';
       if (!clean.trim()) return;
       this.broadcastGuessAsChat(room, player, clean);
+    });
+
+    // --- Reactions & moderation ---
+    s.on('react', ({ type }) => {
+      if (type !== 'like' && type !== 'dislike') return;
+      const room = this.server.roomForToken(this.token);
+      if (!room) return;
+      room.game.react(this.token, type);
+    });
+
+    s.on('votekick', ({ targetId }) => {
+      const room = this.server.roomForToken(this.token);
+      if (!room) return;
+      const voter = room.players.get(this.token);
+      const target = room.players.get(targetId);
+      if (!voter || !target) return;
+      if (targetId === this.token) return; // can't kick yourself
+      if (targetId === room.hostId) return this.deny('The host cannot be kicked');
+
+      const { votes, needed, kicked } = room.addVote(this.token, targetId);
+      if (kicked) {
+        room.broadcast('system_message', {
+          text: `${target.name} was kicked from the room`,
+          kind: 'leave',
+        });
+        this.server.kickPlayer(targetId);
+      } else {
+        room.broadcast('system_message', {
+          text: `${voter.name} voted to kick ${target.name} (${votes}/${needed})`,
+          kind: 'info',
+        });
+      }
     });
   }
 

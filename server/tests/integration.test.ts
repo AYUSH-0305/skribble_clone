@@ -235,4 +235,56 @@ describe('integration: rooms, gameplay, reconnection', () => {
     await delay(200);
     expect(hostGotClosed).toBe(false);
   });
+
+  it('vote-kicks a player on majority and bans them from rejoining', async () => {
+    server = await startServer();
+    const host = mkClient(server.url, 'k-host');
+    await once(host, 'connect');
+    const created = await emitAck<{ ok: boolean; roomId: string }>(host, 'create_room', {
+      hostName: 'Host',
+      settings: {},
+    });
+    const p2 = mkClient(server.url, 'k-p2');
+    await once(p2, 'connect');
+    await emitAck(p2, 'join_room', { roomId: created.roomId, playerName: 'Two' });
+    const p3 = mkClient(server.url, 'k-p3');
+    await once(p3, 'connect');
+    await emitAck(p3, 'join_room', { roomId: created.roomId, playerName: 'Three' });
+
+    // 3 players -> to kick p3, eligible voters = host + p2 = 2, majority needed = 2.
+    const kicked = new Promise<boolean>((res) => p3.on('kicked', () => res(true)));
+    host.emit('votekick' as never, { targetId: 'k-p3' } as never);
+    await delay(150); // one vote: not enough
+    p2.emit('votekick' as never, { targetId: 'k-p3' } as never);
+
+    const got = await Promise.race([kicked, delay(1000).then(() => false)]);
+    expect(got).toBe(true);
+
+    // Banned: rejoin is refused.
+    const p3b = mkClient(server.url, 'k-p3');
+    await once(p3b, 'connect');
+    const rejoin = await emitAck<{ ok: boolean; error?: string }>(p3b, 'join_room', {
+      roomId: created.roomId,
+      playerName: 'Three',
+    });
+    expect(rejoin.ok).toBe(false);
+  });
+
+  it('never lets the host be vote-kicked', async () => {
+    server = await startServer();
+    const host = mkClient(server.url, 'im-host');
+    await once(host, 'connect');
+    const created = await emitAck<{ ok: boolean; roomId: string }>(host, 'create_room', {
+      hostName: 'Host',
+      settings: {},
+    });
+    const p2 = mkClient(server.url, 'im-p2');
+    await once(p2, 'connect');
+    await emitAck(p2, 'join_room', { roomId: created.roomId, playerName: 'Two' });
+
+    const denied = new Promise<string>((res) => p2.on('error_message', (d) => res(d.message)));
+    p2.emit('votekick' as never, { targetId: 'im-host' } as never);
+    const msg = await Promise.race([denied, delay(600).then(() => '')]);
+    expect(msg.toLowerCase()).toContain('host');
+  });
 });

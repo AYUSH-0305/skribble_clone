@@ -169,6 +169,32 @@ export class GameServer {
     }
   }
 
+  /** Remove and ban a vote-kicked player, notifying them and the room. */
+  kickPlayer(token: string): void {
+    const room = this.roomForToken(token);
+    if (!room) return;
+    const player = room.players.get(token);
+    room.ban(token);
+    room.clearVotesFor(token);
+
+    const timer = this.graceTimers.get(token);
+    if (timer) {
+      clearTimeout(timer);
+      this.graceTimers.delete(token);
+    }
+    this.playerToRoom.delete(token);
+
+    if (player) {
+      this.io.to(player.socketId).emit('kicked');
+      this.io.in(player.socketId).socketsLeave(room.id);
+    }
+    room.removePlayer(token); // broadcasts player_left to the rest
+    if (room.isEmpty) {
+      room.game.clearTimers();
+      this.rooms.delete(room.id);
+    }
+  }
+
   /** Destroy a room and return every remaining player to the home screen. */
   private closeRoom(room: Room): void {
     room.game.clearTimers();

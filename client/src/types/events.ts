@@ -121,6 +121,10 @@ export interface ClientToServerEvents {
   // Chat & guessing
   guess: (data: { text: string }) => void;
   chat: (data: { text: string }) => void;
+
+  // Reactions & moderation
+  react: (data: { type: 'like' | 'dislike' }) => void;
+  votekick: (data: { targetId: string }) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -139,6 +143,12 @@ export interface ServerToClientEvents {
   // The host left (or their grace window expired) — the room is gone and every
   // remaining player is returned to the home screen.
   room_closed: () => void;
+
+  // Live like/dislike tallies for the current drawing.
+  reactions: (data: { likes: number; dislikes: number }) => void;
+
+  // This client was vote-kicked — return to home (and it's banned from the room).
+  kicked: () => void;
 
   // Game state
   game_state: (state: GameStateView) => void;

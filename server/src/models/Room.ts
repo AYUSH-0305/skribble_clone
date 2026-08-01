@@ -23,6 +23,10 @@ export class Room {
   strokes: Stroke[] = [];
   private activeStroke: Stroke | null = null;
 
+  // Votekick: target token -> set of voter tokens. Banned tokens can't rejoin.
+  private readonly votes = new Map<string, Set<string>>();
+  private readonly banned = new Set<string>();
+
   readonly game: Game;
 
   constructor(id: string, io: IO, settings: RoomSettings, wordBank: WordBank, isPrivate: boolean) {
@@ -49,6 +53,7 @@ export class Room {
         this.activeStroke = null;
         this.broadcast('canvas_clear');
       },
+      onReactions: (data) => this.broadcast('reactions', data),
     };
 
     this.game = new Game(this.players, this.settings, wordBank, callbacks);
@@ -75,6 +80,10 @@ export class Room {
     if (!player) return;
     this.players.delete(id);
 
+    // Drop any votekick state involving this player.
+    this.votes.delete(id);
+    for (const set of this.votes.values()) set.delete(id);
+
     // Host migration.
     let newHostId: string | undefined;
     if (this.hostId === id) {
@@ -99,6 +108,44 @@ export class Room {
 
   isDrawer(id: string): boolean {
     return this.game.drawerId === id;
+  }
+
+  // -------------------------------------------------------------------------
+  // Votekick / ban
+  // -------------------------------------------------------------------------
+
+  /**
+   * Register `voter`'s vote to kick `target`. Returns the current tally and
+   * whether the strict majority needed to kick has been reached. Only votes
+   * from players still present and connected are counted.
+   */
+  addVote(voter: string, target: string): { votes: number; needed: number; kicked: boolean } {
+    let set = this.votes.get(target);
+    if (!set) {
+      set = new Set();
+      this.votes.set(target, set);
+    }
+    set.add(voter);
+
+    const validVoters = [...set].filter((v) => this.players.get(v)?.connected);
+    const votes = validVoters.length;
+
+    // Eligible voters: everyone connected except the target themselves.
+    const eligible = [...this.players.values()].filter((p) => p.connected && p.id !== target).length;
+    const needed = Math.floor(eligible / 2) + 1; // strict majority
+    return { votes, needed, kicked: votes >= needed };
+  }
+
+  clearVotesFor(target: string): void {
+    this.votes.delete(target);
+  }
+
+  ban(id: string): void {
+    this.banned.add(id);
+  }
+
+  isBanned(id: string): boolean {
+    return this.banned.has(id);
   }
 
   // -------------------------------------------------------------------------

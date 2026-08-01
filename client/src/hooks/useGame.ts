@@ -27,6 +27,7 @@ export interface GameApi {
   myWord: string | null; // the plaintext word, only ever set for the drawer
   roundEnd: RoundEndInfo | null;
   gameOver: { winner: PlayerView | null; leaderboard: PlayerView[] } | null;
+  reactions: { likes: number; dislikes: number };
   error: string | null;
 
   createRoom: (name: string, settings: Partial<RoomSettings>, isPrivate: boolean) => void;
@@ -36,6 +37,8 @@ export interface GameApi {
   chooseWord: (word: string) => void;
   sendGuess: (text: string) => void;
   sendChat: (text: string) => void;
+  react: (type: 'like' | 'dislike') => void;
+  votekick: (targetId: string) => void;
 }
 
 let msgSeq = 0;
@@ -51,6 +54,10 @@ export function useGame(): GameApi {
   const [roundEnd, setRoundEnd] = useState<RoundEndInfo | null>(null);
   const [gameOver, setGameOver] =
     useState<{ winner: PlayerView | null; leaderboard: PlayerView[] } | null>(null);
+  const [reactions, setReactions] = useState<{ likes: number; dislikes: number }>({
+    likes: 0,
+    dislikes: 0,
+  });
   const [error, setError] = useState<string | null>(null);
 
   const youIdRef = useRef<string | null>(null);
@@ -172,6 +179,14 @@ export function useGame(): GameApi {
       setTimeout(() => setError(null), 4000);
     };
 
+    const onKicked = () => {
+      resetToHome();
+      setError('You were kicked from the room.');
+      setTimeout(() => setError(null), 4000);
+    };
+
+    const onReactions = (d: { likes: number; dislikes: number }) => setReactions(d);
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('player_joined', onPlayerJoined);
@@ -189,6 +204,8 @@ export function useGame(): GameApi {
     socket.on('resumed', onResumed);
     socket.on('resume_failed', onResumeFailed);
     socket.on('room_closed', onRoomClosed);
+    socket.on('kicked', onKicked);
+    socket.on('reactions', onReactions);
 
     return () => {
       socket.off('connect', onConnect);
@@ -208,6 +225,8 @@ export function useGame(): GameApi {
       socket.off('resumed', onResumed);
       socket.off('resume_failed', onResumeFailed);
       socket.off('room_closed', onRoomClosed);
+      socket.off('kicked', onKicked);
+      socket.off('reactions', onReactions);
     };
   }, [pushMsg, resetToHome]);
 
@@ -248,6 +267,8 @@ export function useGame(): GameApi {
   const chooseWord = useCallback((word: string) => socket.emit('word_chosen', { word }), []);
   const sendGuess = useCallback((text: string) => socket.emit('guess', { text }), []);
   const sendChat = useCallback((text: string) => socket.emit('chat', { text }), []);
+  const react = useCallback((type: 'like' | 'dislike') => socket.emit('react', { type }), []);
+  const votekick = useCallback((targetId: string) => socket.emit('votekick', { targetId }), []);
 
   return {
     connected,
@@ -259,6 +280,7 @@ export function useGame(): GameApi {
     myWord,
     roundEnd,
     gameOver,
+    reactions,
     error,
     createRoom,
     joinRoom,
@@ -267,5 +289,7 @@ export function useGame(): GameApi {
     chooseWord,
     sendGuess,
     sendChat,
+    react,
+    votekick,
   };
 }

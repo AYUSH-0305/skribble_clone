@@ -1,13 +1,14 @@
-import { Crown, Pencil, Check } from 'lucide-react';
+import { Crown, Pencil, Check, UserX } from 'lucide-react';
 import type { PlayerView } from '../types/events';
 
 interface Props {
   players: PlayerView[];
   drawerId?: string | null;
   youId?: string | null;
+  onVotekick?: (targetId: string) => void;
 }
 
-export function PlayerList({ players, drawerId, youId }: Props) {
+export function PlayerList({ players, drawerId, youId, onVotekick }: Props) {
   const ranked = [...players].sort((a, b) => b.score - a.score);
   // The leader is the top scorer — but only once someone is actually ahead.
   const leaderId = ranked.length && ranked[0].score > 0 && ranked[0].score > (ranked[1]?.score ?? 0)
@@ -48,6 +49,16 @@ export function PlayerList({ players, drawerId, youId }: Props) {
             )}
           </span>
           <span className="score">{p.score}</span>
+          {onVotekick && p.id !== youId && !p.isHost && (
+            <button
+              className="kick-btn"
+              onClick={() => onVotekick(p.id)}
+              title={`Vote to kick ${p.name}`}
+              aria-label={`Vote to kick ${p.name}`}
+            >
+              <UserX size={14} strokeWidth={2.5} />
+            </button>
+          )}
         </li>
       ))}
     </ul>

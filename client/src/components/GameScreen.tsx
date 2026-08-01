@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LogOut, Timer as TimerIcon, Trophy, Crown, Medal, Volume2, VolumeX } from 'lucide-react';
+import {
+  LogOut,
+  Timer as TimerIcon,
+  Trophy,
+  Crown,
+  Medal,
+  Volume2,
+  VolumeX,
+  ThumbsUp,
+  ThumbsDown,
+} from 'lucide-react';
 import { socket } from '../socket';
 import { startMusic, stopMusic, sfxTick, isMuted, setMuted } from '../audio';
 import type { DrawTool, PlayerView } from '../types/events';
@@ -15,7 +25,7 @@ interface Props {
 }
 
 export function GameScreen({ api }: Props) {
-  const { state, you, myWord, wordOptions, roundEnd, gameOver, messages } = api;
+  const { state, you, myWord, wordOptions, roundEnd, gameOver, messages, reactions } = api;
   const [color, setColor] = useState('#000000');
   const [size, setSize] = useState(0.015);
   const [tool, setTool] = useState<DrawTool>('pen');
@@ -81,7 +91,12 @@ export function GameScreen({ api }: Props) {
 
       <div className="game-body">
         <aside className="left card">
-          <PlayerList players={state.players} drawerId={state.drawerId} youId={you?.id} />
+          <PlayerList
+            players={state.players}
+            drawerId={state.drawerId}
+            youId={you?.id}
+            onVotekick={api.votekick}
+          />
         </aside>
 
         <main className="center">
@@ -109,6 +124,27 @@ export function GameScreen({ api }: Props) {
               />
             )}
           </div>
+
+          {state.phase === 'drawing' && (
+            <div className="reactions-bar">
+              <button
+                className="react-btn like"
+                disabled={isDrawer}
+                onClick={() => api.react('like')}
+                title="Like the drawing"
+              >
+                <ThumbsUp size={17} strokeWidth={2.5} /> {reactions.likes}
+              </button>
+              <button
+                className="react-btn dislike"
+                disabled={isDrawer}
+                onClick={() => api.react('dislike')}
+                title="Dislike the drawing"
+              >
+                <ThumbsDown size={17} strokeWidth={2.5} /> {reactions.dislikes}
+              </button>
+            </div>
+          )}
 
           {isDrawer && state.phase === 'drawing' && (
             <Toolbar

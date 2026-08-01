@@ -237,6 +237,11 @@ input:focus { border-color: var(--tomato); box-shadow: var(--shadow-sm); }
 .pname-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .leader-crown { color: #e6a700; flex: none; }
 .score { font-family: var(--font-display); font-weight: 700; color: var(--ink); flex: none; }
+.kick-btn {
+  flex: none; padding: 4px; border: 2px solid var(--ink); border-radius: 7px;
+  background: var(--paper-2); box-shadow: none; opacity: 0.6;
+}
+.kick-btn:hover { background: var(--tomato); color: #fff; opacity: 1; box-shadow: none; }
 .badge { font-size: 10px; padding: 2px 6px; border-radius: 6px; border: 1.5px solid var(--ink); font-weight: 800; display: inline-flex; align-items: center; gap: 3px; }
 .badge.host { background: var(--tomato); color: #fff; }
 .badge.ok { background: var(--grass); color: #fff; }
@@ -325,6 +330,12 @@ input:focus { border-color: var(--tomato); box-shadow: var(--shadow-sm); }
 .tools { display: flex; gap: 6px; margin-left: auto; }
 .tools button { width: 42px; height: 42px; padding: 0; font-size: 18px; }
 .tools button.active { background: var(--sun); }
+
+/* ---- Reactions ----------------------------------------------------------- */
+.reactions-bar { display: flex; gap: 10px; justify-content: center; }
+.react-btn { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-display); }
+.react-btn.like { background: #d6f0d3; }
+.react-btn.dislike { background: #ffd9d2; }
 
 /* ---- Chat ---------------------------------------------------------------- */
 .chat { display: flex; flex-direction: column; height: 100%; }

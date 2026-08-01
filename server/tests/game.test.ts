@@ -23,6 +23,7 @@ function harness(names: string[], settings: Partial<RoomSettings> = {}) {
     hints: [] as { mask: string; hintsRevealed: number }[],
     gameOver: null as { winnerId: string | null } | null,
     clears: 0,
+    reactions: [] as { likes: number; dislikes: number }[],
   };
 
   const cb: GameCallbacks = {
@@ -35,6 +36,7 @@ function harness(names: string[], settings: Partial<RoomSettings> = {}) {
     onRoundEnd: (d) => events.roundEnds.push(d),
     onGameOver: (d) => (events.gameOver = d),
     onClearCanvas: () => events.clears++,
+    onReactions: (d) => events.reactions.push(d),
   };
 
   const game = new Game(players, s, new WordBank(), cb);
@@ -199,6 +201,26 @@ describe('Game FSM', () => {
     h.players.delete(drawerId);
     h.game.handlePlayerLeft(drawerId);
     expect(h.game.phase).toBe('gameOver');
+  });
+
+  it('tallies like/dislike reactions and ignores the drawer', () => {
+    const h = harness(['a', 'b', 'c'], { drawTime: 80, hints: 0 });
+    const { drawerId, guessers } = startDrawing(h);
+
+    h.game.react(guessers[0], 'like');
+    expect(h.events.reactions.at(-1)).toEqual({ likes: 1, dislikes: 0 });
+
+    h.game.react(guessers[1], 'dislike');
+    expect(h.events.reactions.at(-1)).toEqual({ likes: 1, dislikes: 1 });
+
+    // drawer reactions are ignored (no new tally emitted)
+    const before = h.events.reactions.length;
+    h.game.react(drawerId, 'like');
+    expect(h.events.reactions.length).toBe(before);
+
+    // clicking the same reaction again clears it
+    h.game.react(guessers[0], 'like');
+    expect(h.events.reactions.at(-1)).toEqual({ likes: 0, dislikes: 1 });
   });
 
   it('reveals progressive hints over the draw time', () => {
