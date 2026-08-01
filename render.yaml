@@ -1,0 +1,17 @@
+# Render blueprint — single web service that builds the client and serves it
+# from the same origin as the Socket.IO server (no CORS, WebSockets supported).
+services:
+  - type: web
+    name: skribbl-clone
+    runtime: node
+    plan: free
+    # --include=dev forces devDependencies (vite, typescript, tsx) to install
+    # even if Render sets NODE_ENV=production during the build step.
+    buildCommand: >-
+      npm --prefix client install --include=dev && npm --prefix client run build &&
+      npm --prefix server install --include=dev && npm --prefix server run build
+    startCommand: npm --prefix server start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

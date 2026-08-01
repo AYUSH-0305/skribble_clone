@@ -1,0 +1,16 @@
+{
+  "name": "skribbl-clone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-time multiplayer drawing-and-guessing game (skribbl.io clone)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build && npm --prefix server run build",
+    "start": "npm --prefix server start"
+  }
+}

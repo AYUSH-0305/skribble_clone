@@ -1,0 +1,32 @@
+{
+  "animals": [
+    "cat", "dog", "elephant", "giraffe", "penguin", "dolphin", "kangaroo",
+    "octopus", "butterfly", "crocodile", "hedgehog", "squirrel", "flamingo",
+    "rhinoceros", "chameleon", "jellyfish", "peacock", "raccoon", "walrus", "koala"
+  ],
+  "food": [
+    "pizza", "hamburger", "sushi", "pancake", "spaghetti", "popcorn", "cupcake",
+    "watermelon", "sandwich", "pineapple", "doughnut", "broccoli", "strawberry",
+    "hotdog", "avocado", "pretzel", "cheese", "waffle", "burrito", "lollipop"
+  ],
+  "objects": [
+    "umbrella", "telescope", "backpack", "scissors", "lightbulb", "toothbrush",
+    "hammer", "compass", "ladder", "anchor", "candle", "guitar", "camera",
+    "clock", "keyboard", "envelope", "bucket", "magnet", "trophy", "wrench"
+  ],
+  "nature": [
+    "mountain", "rainbow", "volcano", "waterfall", "island", "tornado", "cactus",
+    "snowflake", "lightning", "mushroom", "seashell", "iceberg", "campfire",
+    "sunflower", "river", "desert", "glacier", "meadow", "canyon", "forest"
+  ],
+  "actions": [
+    "jumping", "swimming", "sleeping", "dancing", "cooking", "reading", "singing",
+    "running", "painting", "fishing", "climbing", "juggling", "sneezing",
+    "laughing", "surfing", "skating", "digging", "waving", "yawning", "hiding"
+  ],
+  "places": [
+    "airport", "castle", "lighthouse", "stadium", "library", "hospital", "bridge",
+    "windmill", "aquarium", "pyramid", "igloo", "treehouse", "skyscraper",
+    "farm", "harbor", "temple", "carousel", "playground", "museum", "tent"
+  ]
+}
