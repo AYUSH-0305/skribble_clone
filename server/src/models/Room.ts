@@ -1,17 +1,10 @@
-import type { Server } from 'socket.io';
-import type {
-  ClientToServerEvents,
-  DrawTool,
-  Point,
-  RoomSettings,
-  ServerToClientEvents,
-  Stroke,
-} from '../types/events.js';
+import type { DrawTool, Point, RoomSettings, ServerToClientEvents, Stroke } from '../types/events.js';
+import type { AppServer } from '../types/socket.js';
 import { Game, type GameCallbacks } from './Game.js';
 import { Player } from './Player.js';
 import { WordBank } from './WordBank.js';
 
-type IO = Server<ClientToServerEvents, ServerToClientEvents>;
+type IO = AppServer;
 
 let strokeSeq = 0;
 
@@ -167,12 +160,14 @@ export class Room {
     this.io.to(this.id).emit(event, ...args);
   }
 
+  /** Emit to a single player by their (stable) token, routed to their live socket. */
   emitTo<E extends keyof ServerToClientEvents>(
-    socketId: string,
+    playerId: string,
     event: E,
     ...args: Parameters<ServerToClientEvents[E]>
   ): void {
-    this.io.to(socketId).emit(event, ...args);
+    const player = this.players.get(playerId);
+    if (player && player.connected) this.io.to(player.socketId).emit(event, ...args);
   }
 
   playersView() {

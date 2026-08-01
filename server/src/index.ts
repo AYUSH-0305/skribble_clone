@@ -4,6 +4,7 @@ import path from 'path';
 import express from 'express';
 import { Server } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from './types/events.js';
+import type { SocketData } from './types/socket.js';
 import { GameServer } from './GameServer.js';
 import { MessageHandler } from './MessageHandler.js';
 
@@ -15,15 +16,26 @@ const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN; // set when frontend is on a di
 const app = express();
 const httpServer = createServer(app);
 
-const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
+const io = new Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  Record<string, never>,
+  SocketData
+>(httpServer, {
   cors: CLIENT_ORIGIN ? { origin: CLIENT_ORIGIN, methods: ['GET', 'POST'] } : { origin: '*' },
 });
 
 const gameServer = new GameServer(io);
 
 io.on('connection', (socket) => {
+  // Stable per-player identity from the client (falls back to the socket id).
+  const token = socket.handshake.auth?.token;
+  socket.data.token = typeof token === 'string' && token.length > 0 ? token : `anon-${socket.id}`;
+
   new MessageHandler(socket, gameServer);
-  socket.on('disconnect', () => gameServer.onDisconnect(socket.id));
+  gameServer.tryResume(socket); // re-attach if this token was mid-game
+
+  socket.on('disconnect', () => gameServer.handleDisconnect(socket.data.token));
 });
 
 app.get('/health', (_req, res) => {

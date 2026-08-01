@@ -3,9 +3,13 @@ import type { PlayerView } from '../types/events.js';
 /**
  * A participant in a room. Pure data plus a couple of small helpers.
  * Never touches sockets directly.
+ *
+ * `id` is a STABLE session token that survives reconnects; `socketId` is the
+ * currently-attached socket and is updated whenever the player reconnects.
  */
 export class Player {
-  id: string; // socket.id
+  id: string; // stable session token
+  socketId: string; // current socket.id (changes on reconnect)
   name: string;
   score = 0;
   isHost = false;
@@ -16,10 +20,12 @@ export class Player {
   guessOrder: number | null = null; // 1st, 2nd, ... correct guesser this round
 
   connected = true;
+  disconnectedAt: number | null = null;
 
-  constructor(id: string, name: string) {
+  constructor(id: string, name: string, socketId: string) {
     this.id = id;
     this.name = name;
+    this.socketId = socketId;
   }
 
   resetRound(): void {

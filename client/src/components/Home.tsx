@@ -18,10 +18,15 @@ export function Home({ onCreate, onJoin, prefillRoom }: Props) {
     setSettings((s) => ({ ...s, [k]: v }));
 
   const logo = (
-    <h1 className="logo">
-      <span>skribbl</span>
-      <em>clone</em>
-    </h1>
+    <div className="brand">
+      <h1 className="logo" aria-label="skribbl clone">
+        {'skribbl'.split('').map((c, i) => (
+          <span key={i}>{c}</span>
+        ))}
+        <span className="bang">!</span>
+      </h1>
+      <span className="brand-tag">draw · guess · win</span>
+    </div>
   );
 
   // ---- Create-room configuration (separate card) ----

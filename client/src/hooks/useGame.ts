@@ -128,6 +128,27 @@ export function useGame(): GameApi {
       setTimeout(() => setError(null), 4000);
     };
 
+    // Reconnection: the server re-attached this socket to its previous room.
+    const onResumed = (d: { you: PlayerView; roomId: string; state: GameStateView }) => {
+      youIdRef.current = d.you.id;
+      setYou(d.you);
+      setRoomId(d.roomId);
+      setState(d.state);
+    };
+
+    // Reconnection: nothing to restore. Only act if we *thought* we were in a
+    // room (e.g. reloaded after the grace window lapsed) — drop back to Home.
+    const onResumeFailed = () => {
+      if (youIdRef.current) {
+        youIdRef.current = null;
+        setYou(null);
+        setRoomId(null);
+        setState(null);
+        setError('Your session expired — please rejoin.');
+        setTimeout(() => setError(null), 4000);
+      }
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('player_joined', onPlayerJoined);
@@ -142,6 +163,8 @@ export function useGame(): GameApi {
     socket.on('chat_message', onChatMessage);
     socket.on('system_message', onSystemMessage);
     socket.on('error_message', onError);
+    socket.on('resumed', onResumed);
+    socket.on('resume_failed', onResumeFailed);
 
     return () => {
       socket.off('connect', onConnect);
@@ -158,6 +181,8 @@ export function useGame(): GameApi {
       socket.off('chat_message', onChatMessage);
       socket.off('system_message', onSystemMessage);
       socket.off('error_message', onError);
+      socket.off('resumed', onResumed);
+      socket.off('resume_failed', onResumeFailed);
     };
   }, [pushMsg]);
 

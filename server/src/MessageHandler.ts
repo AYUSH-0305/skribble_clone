@@ -1,9 +1,7 @@
-import type { Socket } from 'socket.io';
-import type { ClientToServerEvents, ServerToClientEvents } from './types/events.js';
+import type { AppSocket } from './types/socket.js';
 import type { GameServer } from './GameServer.js';
+import type { Room } from './models/Room.js';
 import { Player } from './models/Player.js';
-
-type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 
 const MAX_NAME_LEN = 20;
 const MAX_CHAT_LEN = 120;
@@ -17,6 +15,9 @@ function cleanName(raw: unknown): string {
  * One instance per connection. Translates raw socket events into Room/Game
  * method calls and enforces authorization (host-only, drawer-only). Contains no
  * game logic itself — only routing and guards.
+ *
+ * Player identity is the stable session token (`socket.data.token`), NOT the
+ * socket id, so it survives reconnects.
  */
 export class MessageHandler {
   constructor(
@@ -26,14 +27,18 @@ export class MessageHandler {
     this.register();
   }
 
+  private get token(): string {
+    return this.socket.data.token;
+  }
+
   private register(): void {
     const s = this.socket;
 
     s.on('create_room', ({ hostName, settings, isPrivate }, ack) => {
       const room = this.server.createRoom(settings, isPrivate ?? true);
-      const player = new Player(s.id, cleanName(hostName));
+      const player = new Player(this.token, cleanName(hostName), s.id);
       s.join(room.id);
-      this.server.bindSocket(s.id, room.id);
+      this.server.bindPlayer(this.token, room.id);
       room.addPlayer(player);
       ack?.({ ok: true, roomId: room.id, you: player.toView() });
     });
@@ -44,14 +49,14 @@ export class MessageHandler {
       if (room.players.size >= room.settings.maxPlayers)
         return ack?.({ ok: false, error: 'Room is full' });
 
-      const player = new Player(s.id, cleanName(playerName));
+      const player = new Player(this.token, cleanName(playerName), s.id);
       s.join(room.id);
-      this.server.bindSocket(s.id, room.id);
+      this.server.bindPlayer(this.token, room.id);
       room.addPlayer(player);
 
       // Replay the current canvas so a mid-game joiner sees the drawing so far.
       const strokes = room.currentStrokes();
-      if (strokes.length > 0) room.emitTo(s.id, 'canvas_state', { strokes });
+      if (strokes.length > 0) s.emit('canvas_state', { strokes });
 
       ack?.({
         ok: true,
@@ -61,19 +66,27 @@ export class MessageHandler {
       });
     });
 
-    s.on('start_game', () => {
-      const room = this.server.roomForSocket(s.id);
+    // Re-send the current canvas on demand (used by the client after a reconnect
+    // or when the drawing surface (re)mounts).
+    s.on('request_canvas', () => {
+      const room = this.server.roomForToken(this.token);
       if (!room) return;
-      if (room.hostId !== s.id) return this.deny('Only the host can start the game');
+      s.emit('canvas_state', { strokes: room.currentStrokes() });
+    });
+
+    s.on('start_game', () => {
+      const room = this.server.roomForToken(this.token);
+      if (!room) return;
+      if (room.hostId !== this.token) return this.deny('Only the host can start the game');
       if (room.players.size < 2) return this.deny('Need at least 2 players to start');
       room.game.startGame();
     });
 
     s.on('leave_room', () => {
-      const room = this.server.roomForSocket(s.id);
+      const room = this.server.roomForToken(this.token);
       if (!room) return;
       s.leave(room.id); // stop receiving this room's broadcasts (socket stays alive)
-      this.server.leaveRoom(s.id); // remove player, migrate host, GC if empty
+      this.server.leaveRoom(this.token); // remove player, migrate host, GC if empty
     });
 
     // --- Drawing (drawer-only) ---
@@ -106,16 +119,16 @@ export class MessageHandler {
 
     // --- Round ---
     s.on('word_chosen', ({ word }) => {
-      const room = this.server.roomForSocket(s.id);
+      const room = this.server.roomForToken(this.token);
       if (!room) return;
-      room.game.chooseWord(s.id, word);
+      room.game.chooseWord(this.token, word);
     });
 
     // --- Chat & guessing ---
     s.on('guess', ({ text }) => {
-      const room = this.server.roomForSocket(s.id);
+      const room = this.server.roomForToken(this.token);
       if (!room) return;
-      const player = room.players.get(s.id);
+      const player = room.players.get(this.token);
       if (!player) return;
       const clean = typeof text === 'string' ? text.slice(0, MAX_CHAT_LEN) : '';
       if (!clean.trim()) return;
@@ -136,7 +149,7 @@ export class MessageHandler {
         });
       } else if (outcome.close) {
         // Private nudge only to the guesser.
-        room.emitTo(s.id, 'system_message', { text: `"${clean}" is close!`, kind: 'info' });
+        room.emitTo(this.token, 'system_message', { text: `"${clean}" is close!`, kind: 'info' });
       } else {
         // Wrong guess shows as a normal chat message to players still guessing.
         this.broadcastGuessAsChat(room, player, clean);
@@ -144,9 +157,9 @@ export class MessageHandler {
     });
 
     s.on('chat', ({ text }) => {
-      const room = this.server.roomForSocket(s.id);
+      const room = this.server.roomForToken(this.token);
       if (!room) return;
-      const player = room.players.get(s.id);
+      const player = room.players.get(this.token);
       if (!player) return;
       const clean = typeof text === 'string' ? text.slice(0, MAX_CHAT_LEN) : '';
       if (!clean.trim()) return;
@@ -159,11 +172,7 @@ export class MessageHandler {
    * are still guessing when it comes from the drawer or an already-correct
    * player (so it can't leak the answer); those messages go only to "insiders".
    */
-  private broadcastGuessAsChat(
-    room: NonNullable<ReturnType<GameServer['roomForSocket']>>,
-    player: Player,
-    text: string
-  ): void {
+  private broadcastGuessAsChat(room: Room, player: Player, text: string): void {
     const isDrawing = room.game.phase === 'drawing';
     const isInsider = player.hasGuessedThisRound || room.isDrawer(player.id);
 
@@ -183,11 +192,11 @@ export class MessageHandler {
     }
   }
 
-  /** The room this socket is in, but only if it is the current drawer. */
-  private drawerRoom() {
-    const room = this.server.roomForSocket(this.socket.id);
+  /** The room this player is in, but only if they are the current drawer. */
+  private drawerRoom(): Room | undefined {
+    const room = this.server.roomForToken(this.token);
     if (!room) return undefined;
-    return room.isDrawer(this.socket.id) ? room : undefined;
+    return room.isDrawer(this.token) ? room : undefined;
   }
 
   private deny(message: string): void {

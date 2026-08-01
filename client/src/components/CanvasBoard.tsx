@@ -148,15 +148,23 @@ export function CanvasBoard({ isDrawer, color, size, tool }: Props) {
       redrawAll();
     };
 
+    // Pull the authoritative canvas now (covers mount, resume, and reload), and
+    // again after any reconnect so a backgrounded phone repaints what it missed.
+    const requestCanvas = () => socket.emit('request_canvas');
+
     socket.on('draw_data', onData);
     socket.on('draw_point', onPoint);
     socket.on('canvas_clear', onClear);
     socket.on('canvas_state', onState);
+    socket.on('connect', requestCanvas);
+    requestCanvas();
+
     return () => {
       socket.off('draw_data', onData);
       socket.off('draw_point', onPoint);
       socket.off('canvas_clear', onClear);
       socket.off('canvas_state', onState);
+      socket.off('connect', requestCanvas);
     };
   }, []);
 

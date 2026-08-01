@@ -106,6 +106,7 @@ export interface ClientToServerEvents {
 
   start_game: () => void;
   leave_room: () => void;
+  request_canvas: () => void; // ask the server to (re)send the current canvas
 
   // Drawing (drawer only; server enforces)
   draw_start: (data: { x: number; y: number; color: string; size: number; tool: DrawTool }) => void;
@@ -129,6 +130,11 @@ export interface ServerToClientEvents {
   // Room / lobby
   player_joined: (data: { player: PlayerView; players: PlayerView[] }) => void;
   player_left: (data: { playerId: string; players: PlayerView[]; newHostId?: string }) => void;
+
+  // Reconnection: server restored this socket into its previous room, or told
+  // it there was nothing to restore (e.g. the grace window expired).
+  resumed: (data: { you: PlayerView; roomId: string; state: GameStateView }) => void;
+  resume_failed: () => void;
 
   // Game state
   game_state: (state: GameStateView) => void;
