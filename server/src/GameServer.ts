@@ -74,7 +74,8 @@ export class GameServer {
     return roomId ? this.rooms.get(roomId) : undefined;
   }
 
-  onDisconnect(socketId: string): void {
+  /** Remove a socket from its room and garbage-collect the room if empty. */
+  leaveRoom(socketId: string): void {
     const room = this.roomForSocket(socketId);
     this.socketToRoom.delete(socketId);
     if (!room) return;
@@ -83,5 +84,9 @@ export class GameServer {
       room.game.clearTimers();
       this.rooms.delete(room.id);
     }
+  }
+
+  onDisconnect(socketId: string): void {
+    this.leaveRoom(socketId);
   }
 }

@@ -30,6 +30,7 @@ export interface GameApi {
 
   createRoom: (name: string, settings: Partial<RoomSettings>, isPrivate: boolean) => void;
   joinRoom: (roomId: string, name: string) => void;
+  leaveRoom: () => void;
   startGame: () => void;
   chooseWord: (word: string) => void;
   sendGuess: (text: string) => void;
@@ -188,6 +189,23 @@ export function useGame(): GameApi {
     });
   }, []);
 
+  const leaveRoom = useCallback(() => {
+    socket.emit('leave_room');
+    youIdRef.current = null;
+    setYou(null);
+    setRoomId(null);
+    setState(null);
+    setMessages([]);
+    setWordOptions(null);
+    setMyWord(null);
+    setRoundEnd(null);
+    setGameOver(null);
+    // Clear ?room= so a leave doesn't leave a stale invite code in the URL.
+    if (window.history.replaceState) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   const startGame = useCallback(() => socket.emit('start_game'), []);
   const chooseWord = useCallback((word: string) => socket.emit('word_chosen', { word }), []);
   const sendGuess = useCallback((text: string) => socket.emit('guess', { text }), []);
@@ -206,6 +224,7 @@ export function useGame(): GameApi {
     error,
     createRoom,
     joinRoom,
+    leaveRoom,
     startGame,
     chooseWord,
     sendGuess,

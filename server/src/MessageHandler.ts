@@ -69,6 +69,13 @@ export class MessageHandler {
       room.game.startGame();
     });
 
+    s.on('leave_room', () => {
+      const room = this.server.roomForSocket(s.id);
+      if (!room) return;
+      s.leave(room.id); // stop receiving this room's broadcasts (socket stays alive)
+      this.server.leaveRoom(s.id); // remove player, migrate host, GC if empty
+    });
+
     // --- Drawing (drawer-only) ---
     s.on('draw_start', (d) => {
       const room = this.drawerRoom();

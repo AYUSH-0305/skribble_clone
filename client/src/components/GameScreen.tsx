@@ -31,6 +31,9 @@ export function GameScreen({ api }: Props) {
   return (
     <div className="game">
       <header className="game-top">
+        <button className="ghost leave-btn" onClick={api.leaveRoom} title="Leave room">
+          ← Leave
+        </button>
         <div className="round">
           Round <strong>{state.round}</strong>/{state.totalRounds}
         </div>
@@ -73,6 +76,7 @@ export function GameScreen({ api }: Props) {
                 leaderboard={gameOver.leaderboard}
                 isHost={!!you?.isHost}
                 onPlayAgain={api.startGame}
+                onLeave={api.leaveRoom}
               />
             )}
           </div>
@@ -131,11 +135,13 @@ function GameOverCard({
   leaderboard,
   isHost,
   onPlayAgain,
+  onLeave,
 }: {
   winner: PlayerView | null;
   leaderboard: PlayerView[];
   isHost: boolean;
   onPlayAgain: () => void;
+  onLeave: () => void;
 }) {
   return (
     <div className="overlay">
@@ -149,13 +155,18 @@ function GameOverCard({
             </li>
           ))}
         </ol>
-        {isHost ? (
-          <button className="primary" onClick={onPlayAgain}>
-            Play again
+        <div className="game-over-actions">
+          {isHost ? (
+            <button className="primary" onClick={onPlayAgain}>
+              Play again
+            </button>
+          ) : (
+            <p className="muted">Waiting for the host…</p>
+          )}
+          <button className="ghost" onClick={onLeave}>
+            Leave room
           </button>
-        ) : (
-          <p className="muted">Waiting for the host…</p>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -105,6 +105,7 @@ export interface ClientToServerEvents {
   ) => void;
 
   start_game: () => void;
+  leave_room: () => void;
 
   // Drawing (drawer only; server enforces)
   draw_start: (data: { x: number; y: number; color: string; size: number; tool: DrawTool }) => void;

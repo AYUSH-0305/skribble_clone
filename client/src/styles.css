@@ -50,6 +50,12 @@ button.primary {
 }
 button.primary:hover { filter: brightness(1.07); }
 button.link { background: none; color: var(--muted); padding: 6px; text-decoration: underline; }
+button.ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+button.ghost:hover { background: var(--panel2); color: var(--text); border-color: var(--danger); }
 
 input {
   font: inherit;
@@ -109,6 +115,8 @@ input:focus { border-color: var(--accent); }
   align-content: center; padding: 24px; max-width: 900px; margin: 0 auto;
 }
 .lobby-main { display: flex; flex-direction: column; gap: 14px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; }
+.card-head h2 { margin: 0; }
 .room-code { font-size: 18px; }
 .room-code strong { color: var(--accent2); letter-spacing: 4px; font-size: 24px; }
 .invite { display: flex; gap: 8px; }
@@ -141,6 +149,7 @@ input:focus { border-color: var(--accent); }
   display: flex; align-items: center; gap: 18px;
   padding: 10px 18px; background: var(--panel); border-bottom: 1px solid var(--line);
 }
+.leave-btn { padding: 6px 12px; }
 .round { color: var(--muted); }
 .round strong { color: var(--text); }
 .timer {
@@ -221,6 +230,7 @@ input:focus { border-color: var(--accent); }
 .deltas .zero { color: var(--muted); }
 
 .game-over { text-align: center; min-width: 320px; }
+.game-over-actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
 .leaderboard { list-style: none; counter-reset: rank; padding: 0; margin: 12px 0; }
 .leaderboard li {
   counter-increment: rank; display: flex; justify-content: space-between;

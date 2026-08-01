@@ -7,9 +7,10 @@ interface Props {
   state: GameStateView;
   you: PlayerView | null;
   onStart: () => void;
+  onLeave: () => void;
 }
 
-export function Lobby({ roomId, state, you, onStart }: Props) {
+export function Lobby({ roomId, state, you, onStart, onLeave }: Props) {
   const [copied, setCopied] = useState(false);
   const isHost = !!you?.isHost;
   const canStart = isHost && state.players.length >= 2;
@@ -30,7 +31,12 @@ export function Lobby({ roomId, state, you, onStart }: Props) {
   return (
     <div className="lobby">
       <div className="lobby-main card">
-        <h2>Waiting room</h2>
+        <div className="card-head">
+          <h2>Waiting room</h2>
+          <button className="ghost" onClick={onLeave}>
+            ← Leave
+          </button>
+        </div>
         <div className="room-code">
           Room code: <strong>{roomId}</strong>
         </div>

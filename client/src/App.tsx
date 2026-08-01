@@ -19,7 +19,13 @@ export default function App() {
       )}
 
       {inRoom && api.state!.phase === 'lobby' && (
-        <Lobby roomId={api.roomId!} state={api.state!} you={api.you} onStart={api.startGame} />
+        <Lobby
+          roomId={api.roomId!}
+          state={api.state!}
+          you={api.you}
+          onStart={api.startGame}
+          onLeave={api.leaveRoom}
+        />
       )}
 
       {inRoom && api.state!.phase !== 'lobby' && <GameScreen api={api} />}
