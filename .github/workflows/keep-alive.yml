@@ -1,0 +1,30 @@
+name: Keep alive
+
+# Pings the deployed health endpoint so the Render free instance doesn't spin down
+# (free services sleep after ~15 min without inbound traffic).
+#
+# NOTE: this is an unofficial workaround. Render's free tier includes ~750
+# instance-hours/month, so keeping one service awake around the clock uses nearly
+# all of them. To conserve hours, narrow the schedule (e.g. only during the hours
+# you expect visitors) or rely on an external pinger (cron-job.org / UptimeRobot).
+#
+# GitHub may delay or queue scheduled runs, so this is a "best effort" backup —
+# an external cron service is more dependable.
+
+on:
+  schedule:
+    # Every 10 minutes during business hours only, to conserve free instance-hours.
+    # GitHub cron is UTC; 02:00–18:59 UTC ≈ 07:30–00:30 IST (covers 8am–midnight IST).
+    - cron: '*/10 2-18 * * *'
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        run: |
+          URL="https://skribbl-clone-z4ot.onrender.com/health"
+          echo "Pinging $URL"
+          # A slow/failed response is fine — the request itself wakes the service.
+          curl -fsS --max-time 90 "$URL" || echo "ping did not return OK (service may be waking)"
